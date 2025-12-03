@@ -15,7 +15,6 @@ using u8 = unsigned char; // alias per unsigned char
 
 // -------------------- KERNEL NAIVE --------------------
 __global__ void gol_step_naive(u8* src, u8* dst, int width, int height, int RADIUS) {
-    size_t total_cells = size_t(width) * size_t(height);
     
     // Non ottimale, solo 1024 celle possibili => 32x32 griglia
     // Un blocco solo => un solo SM attivo
@@ -23,7 +22,7 @@ __global__ void gol_step_naive(u8* src, u8* dst, int width, int height, int RADI
     int cell_index_y = threadIdx.y;
 
     int neighbors_alive = 0;
-    for (size_t dy = -RADIUS; dy <= RADIUS; ++dy) 
+    for (int dy = -RADIUS; dy <= RADIUS; ++dy) 
     {
         for (int dx = -RADIUS; dx <= RADIUS; ++dx) 
         {
@@ -39,7 +38,8 @@ __global__ void gol_step_naive(u8* src, u8* dst, int width, int height, int RADI
                 }
         }
     }
-    u8 cell_value = src[cell_index_x * width + cell_index_y];
+    u8 cell_value = src[cell_index_y * width + cell_index_x];
+    neighbors_alive -= cell_value; // Escludo la cella centrale dal conteggio
     u8 cell_result = 0;
         
     // Warp divergence!!
@@ -48,7 +48,7 @@ __global__ void gol_step_naive(u8* src, u8* dst, int width, int height, int RADI
     else // Morto
         cell_result = (neighbors_alive == 3) ? 1 : 0;
 
-    dst[cell_index_x * width + cell_index_y] = cell_result;
+    dst[cell_index_y * width + cell_index_x] = cell_result;
 }
 
 // host helper
@@ -60,6 +60,11 @@ void random_board(u8* board, int width, int height, float alive_prob = 0.2f) {
 
 // Inizializza la griglia con un Glider usando char* e una dimensione "padded"
 void initialize_glider(u8* board, int width) {
+
+    for (int y = 0; y < width; ++y)
+        for (int x = 0; x < width; ++x)
+            board[y * width + x] = 0;
+
     int r = 10;
     int c = 10;
     board[r * width + c + 1]         = 1;
@@ -72,7 +77,7 @@ void initialize_glider(u8* board, int width) {
 int main(int argc, char** argv) {
     int width = 32;
     int height = 32;
-    int steps = 200;
+    int steps = 15;
     int radius = 1;
 
     size_t griglia = size_t(width) * height;
@@ -80,7 +85,7 @@ int main(int argc, char** argv) {
 
     u8* h_board = (u8*)malloc(bytes); // host board allocation
     srand((unsigned)time(NULL));
-    //random_board(h_board, colonne, righe, 0.15f);
+    //random_board(h_board, width, height, 0.15f);
     initialize_glider(h_board, width);
 
     // alloca memoria device
@@ -103,13 +108,14 @@ int main(int argc, char** argv) {
             putchar(h_board[row * width + col] ? '#' : '.');
             putchar('\n');
     }
+    putchar('\n');
     
     // Kernel execution
     for (int s = 0; s < steps; ++s) {
         gol_step_naive<<<dimGrid, dimBlock>>>(src, dst, width, height, radius);
         CHECK(cudaGetLastError());
         CHECK(cudaDeviceSynchronize());
-        
+
         // traferisco la griglia GPU -> CPU
         CHECK(cudaMemcpy(h_board, dst, bytes, cudaMemcpyDeviceToHost)); 
 
@@ -117,13 +123,15 @@ int main(int argc, char** argv) {
         for (int row = 0; row < width; ++row) {
             for (int col = 0; col < width; ++col)
                 putchar(h_board[row * width + col] ? '#' : '.');
-                putchar('\n');
+            putchar('\n');
         }
+        putchar('\n');
 
         // Swap buffers
         u8* tmp = src;
         src = dst; 
         dst = tmp;
+
     }
 
     cudaFree(d_a);
