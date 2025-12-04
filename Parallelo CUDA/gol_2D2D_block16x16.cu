@@ -92,6 +92,25 @@ void initialize_glider(u8* board, int width) {
     board[(r + 2) * width + c + 2]   = 1;
 }
 
+// Inizializza la griglia con valori 0 o 1 in modo deterministico
+void init_random_reproducible(u8* grid, int width, int height, unsigned int seed) {
+    
+    // Probabilità che sia 0 o 1
+    float probability = 0.5;
+    // Seed riproducibile
+    srand(seed);
+
+    int total_cells = width * height;
+
+    for (int i = 0; i < total_cells; ++i) {
+        // Genera un float tra 0.0 e 1.0
+        float r = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+        
+        // Se r è minore della probabilità (es. 0.5), la cella è viva (1), altrimenti morta (0)
+        grid[i] = (r < probability) ? 1 : 0;
+    }
+}
+
 int main(int argc, char** argv) {
     int width = 1024;   // non più 32
     int height = 1024;  // non più 32
@@ -104,7 +123,8 @@ int main(int argc, char** argv) {
     u8* h_board = (u8*)malloc(total_bytes);     // host board allocation
     srand((unsigned)time(NULL));
     //random_board(h_board, width, height, 0.15f);
-    initialize_glider(h_board, width);
+    //initialize_glider(h_board, width);
+    init_random_reproducible(h_board, width, height, 42);
 
     // alloca memoria device
     u8 *d_a, *d_b;
@@ -156,16 +176,13 @@ int main(int argc, char** argv) {
         // traferisco la griglia GPU -> CPU
         CHECK(cudaMemcpy(h_board, dst, total_bytes, cudaMemcpyDeviceToHost)); 
 
-        if (width <= 64 && height <= 64) // Stampa solo griglie di dim ragionevoli (max 64x64)
-        {
-            // Stampa della griglia iniziale
-            for (int row = 0; row < width; ++row) {
-                for (int col = 0; col < width; ++col)
-                    putchar(h_board[row * width + col] ? '#' : '.');
-                putchar('\n');
-            }
+        // Stampa della griglia
+        for (int row = 0; row < 64; ++row) {
+            for (int col = 0; col < 64; ++col)
+                putchar(h_board[row * width + col] ? '#' : '.');
             putchar('\n');
         }
+        putchar('\n');
 
         // Swap buffers
         u8* tmp = src;
