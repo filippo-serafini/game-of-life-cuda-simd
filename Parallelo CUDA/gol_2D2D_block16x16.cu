@@ -62,17 +62,14 @@ __global__ void gol_step_2d2d(u8* src, u8* dst, int width, int height, int RADIU
                 }
         }
     }
-    u8 cell_value = src[cell_index_y * width + cell_index_x];
+    u8 cell_value = src[cell_mem_idx];
     neighbors_alive -= cell_value; // Escludo la cella centrale dal conteggio
     u8 cell_result = 0;
         
-    // Warp divergence!!
-    if (cell_value) // Vivo
-        cell_result = (neighbors_alive == 2 || neighbors_alive == 3) ? 1 : 0;
-    else // Morto
-        cell_result = (neighbors_alive == 3) ? 1 : 0;
+    // RISOLTA warp divergence
+    cell_result = (neighbors_alive == 3) || (cell_value && (neighbors_alive == 2));
 
-    dst[cell_index_y * width + cell_index_x] = cell_result;
+    dst[cell_mem_idx] = cell_result;
 }
 
 // host helper
@@ -124,9 +121,12 @@ int main(int argc, char** argv) {
     // Fare test per capire configurazione migliore e verificare 
     // occupancy tramite nsight compute
 
-    // Primo test con blocchi 32x32 (massimo) => 1024 th per blocco
-    const int BLOCK_SIZE_X = 32;
-    const int BLOCK_SIZE_Y = 32;
+    // Dimensioni dei blocchi (Numero di thread) 
+    const int BLOCK_SIZE_X = 16;
+    const int BLOCK_SIZE_Y = 16;
+    /*
+    *   256 threads => 8 warp per blocco
+    */
     
     // --- DIMENSIONAMENTO DI GRIGLIA E BLOCCHI ---
     dim3 dimBlock(BLOCK_SIZE_X, BLOCK_SIZE_Y);
