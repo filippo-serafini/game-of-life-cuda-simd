@@ -134,8 +134,8 @@ int main(int argc, char** argv) {
     //  1. dimensione della griglia (w, h)
     //  2. dimensione dei blocchi (# th)
     dim3 dimGrid(
-        (width * dimBlock.x - 1) / dimBlock.x,
-        (width * dimBlock.y - 1) / dimBlock.y
+        (width + dimBlock.x - 1) / dimBlock.x,
+        (width + dimBlock.y - 1) / dimBlock.y
     );
 
     u8* src = d_a;

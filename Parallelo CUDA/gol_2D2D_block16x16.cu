@@ -23,12 +23,7 @@ using u8 = unsigned char; // alias per unsigned char
 
 // -------------------- KERNEL 2d Grid/Block --------------------
 __global__ void gol_step_2d2d(u8* src, u8* dst, int width, int height, int RADIUS) {
-    
-    // Con griglia 2D e blocco 2D posso considerare griglie molto più grandi:
-    // blocchi di dim3: 32x23
-    // griglia di dim3: [(dataSizeX + blockSizeX - 1) / blockSizeX, 
-    //                    (dataSizey + blockSizeY -1) / blockSizeY, 1]
-    
+
     // Calcolo degli indici di cella con indice thread globale (Global Indexing)
     int cell_index_x = blockIdx.x * blockDim.x + threadIdx.x;
     int cell_index_y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -134,8 +129,8 @@ int main(int argc, char** argv) {
     //  1. dimensione della griglia (w, h)
     //  2. dimensione dei blocchi (# th)
     dim3 dimGrid(
-        (width * dimBlock.x - 1) / dimBlock.x,
-        (width * dimBlock.y - 1) / dimBlock.y
+        (width + dimBlock.x - 1) / dimBlock.x,
+        (width + dimBlock.y - 1) / dimBlock.y
     );
 
     u8* src = d_a;
