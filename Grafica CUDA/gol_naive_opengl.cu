@@ -80,6 +80,7 @@ void random_board(u8* board, int width, int height, float alive_prob = 0.2f) {
 // Inizializza la griglia con un Glider usando char* e una dimensione "padded"
 void initialize_glider(u8* board, int width) {
 
+    // Inizializzazione a 0
     for (int y = 0; y < width; ++y)
         for (int x = 0; x < width; ++x)
             board[y * width + x] = 0;
