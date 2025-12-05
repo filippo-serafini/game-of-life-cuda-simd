@@ -90,6 +90,25 @@ void initialize_glider(u8* board, int width, int height) {
     }
 }
 
+// Inizializza la griglia con valori 0 o 1 in modo deterministico
+void init_random_reproducible(u8* grid, int width, int height, unsigned int seed) {
+    
+    // Probabilità che sia 0 o 1
+    float probability = 0.5;
+    // Seed riproducibile
+    srand(seed);
+
+    int total_cells = width * height;
+
+    for (int i = 0; i < total_cells; ++i) {
+        // Genera un float tra 0.0 e 1.0
+        float r = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+        
+        // Se r è minore della probabilità (es. 0.5), la cella è viva (1), altrimenti morta (0)
+        grid[i] = (r < probability) ? 1 : 0;
+    }
+}
+
 // -------------------- Shader helper --------------------
 GLuint createShader(GLenum type, const char* src) {
     GLuint shader = glCreateShader(type);
@@ -285,8 +304,11 @@ int main(int argc, char** argv) {
         return -1;
     }
     srand((unsigned)time(NULL));
-    random_board(h_board, width, height, 0.15f);
+    
+    // diverse modalità di inizializzazione della griglia
+    //random_board(h_board, width, height, 0.15f);
     //initialize_glider(h_board, width, height);
+    init_random_reproducible(h_board, width, height, 42); // seed 42
 
     u8 *d_a = nullptr, *d_b = nullptr;
     CHECK(cudaMalloc(&d_a, board_bytes));
