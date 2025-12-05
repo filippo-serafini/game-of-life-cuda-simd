@@ -3,6 +3,9 @@
 // Rendering via PBO -> Texture -> Fullscreen Quad (OpenGL Core)
 // Continuous zoom (MMB) and pan (LMB)
 
+//COMANDO PER COMPILARE grafica avanzata
+//nvcc filename.cu src/glad.c -I"include" -L"build" -lglfw3 -lopengl32 -lgdi32 -luser32 -Xcompiler "/EHsc /MD" -o filename.exe
+
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <cuda_runtime.h>
@@ -525,6 +528,3 @@ int main(int argc, char** argv) {
 
     return 0;
 }
-
-// Compile (example):
-// nvcc -O2 -o gol_zoom_pan_texture gol_zoom_pan_texture.cu -lglfw -ldl -lGL -lpthread

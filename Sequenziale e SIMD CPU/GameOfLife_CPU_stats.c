@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <immintrin.h> // Include per gli intrinsics SSE
+#include <windows.h> // Necessario per le funzioni di performance counter
 
 // --- Costanti ---
 #define LOGIC_SIZE 64*5       // Dimensione effettiva della griglia N x N
@@ -234,8 +235,17 @@ int main() {
     printf("Game of Life (64x64) C con SSE SIMD\n");
 
     // Istanti di inizio e fine per l'esecuzione
+    // Variabili per il tempo sequenziale
     uint64_t clock_counter_sequential_start, clock_counter_sequential_end;
+    LARGE_INTEGER frequency_seq;
+    LARGE_INTEGER start_seq, end_seq;
+    double time_seq;
+    // Variabili per il tempo SIMD
     uint64_t clock_counter_SIMD_start, clock_counter_SIMD_end;
+    LARGE_INTEGER frequency_simd;
+    LARGE_INTEGER start_simd, end_simd;
+    double time_simd;
+    
     
     int generations = 15; // 5mila
 
@@ -252,7 +262,11 @@ int main() {
     char* next = grid_b;
 
     // ISTANTE DI INIZIO
-    clock_counter_sequential_start = __rdtsc(); 
+    clock_counter_sequential_start = __rdtsc();
+    // Ottiene la frequenza (conta il numero di tick al secondo)
+    QueryPerformanceFrequency(&frequency_seq); 
+    // Ottiene il valore iniziale del contatore
+    QueryPerformanceCounter(&start_seq);
 
     for (int g = 0; g < generations; ++g) {
         //printf("\nGenerazione %d:\n", g);
@@ -270,6 +284,10 @@ int main() {
     //print_grid_seq(current);
     // ISTANTE FINALE
     clock_counter_sequential_end = __rdtsc();
+    // Ottiene il valore finale del contatore
+    QueryPerformanceCounter(&end_seq);
+    // Calcola il tempo in secondi
+    time_seq = (double)(end_seq.QuadPart - start_seq.QuadPart) / frequency_seq.QuadPart;    
 
     free(grid_a);
     free(grid_b);
@@ -292,7 +310,11 @@ int main() {
     next = grid_b;
 
     // ISTANTE DI INIZIO
-    clock_counter_SIMD_start = __rdtsc(); 
+    clock_counter_SIMD_start = __rdtsc();
+    // Ottiene la frequenza
+    QueryPerformanceFrequency(&frequency_simd);
+    // Ottiene il valore iniziale del contatore
+    QueryPerformanceCounter(&start_simd);
 
     for (int g = 0; g < generations; ++g) {
         //printf("\nGenerazione %d:\n", g);
@@ -312,14 +334,28 @@ int main() {
 
     // ISTANTE FINALE
     clock_counter_SIMD_end = __rdtsc();
+    // Ottiene il valore finale del contatore
+    QueryPerformanceCounter(&end_simd);
+    // Calcola il tempo in secondi
+    time_simd = (double)(end_simd.QuadPart - start_simd.QuadPart) / frequency_simd.QuadPart;
+
+    double speedup_clocks = (clock_counter_sequential_end - clock_counter_sequential_start) / (double)(clock_counter_SIMD_end - clock_counter_SIMD_start);
+    double speedup_time = time_seq / time_simd;
+
+    //double efficiency_clocks = speedup_clocks / (double)num_cores;
+    //double efficiency_time = speedup_time / (double)num_cores;
 
     // Liberazione della memoria
     aligned_free_grid(grid_a);
     aligned_free_grid(grid_b);
 
     printf("Elapsed clocks (SIMD): %lu\n", clock_counter_SIMD_end-clock_counter_SIMD_start);
+    printf("Tempo di esecuzione (SIMD): %f s\n", time_simd);
     printf("Elapsed clocks (Sequential): %lu\n", clock_counter_sequential_end-clock_counter_sequential_start);
-    printf("Speed-up = %3.2f\n", (clock_counter_sequential_end - clock_counter_sequential_start)/((clock_counter_SIMD_end - clock_counter_SIMD_start)*1.0));
-
+    printf("Tempo di esecuzione (Sequenziale): %f s\n", time_seq);
+    printf("Speed-up (clocks) = %3.2f\n", speedup_clocks*1.0);
+    printf("Speed-up (time) = %3.2f\n", speedup_time*1.0);
+    //printf("Efficiency (clocks) = %3.2f\n", efficiency_clocks);
+    //printf("Efficiency (time) = %3.2f\n", efficiency_time);
     return 0;
 }
