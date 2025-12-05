@@ -49,7 +49,8 @@ __global__ void gol_step_2d2d(u8* src, u8* dst, int width, int height, int RADIU
             // Conto il contributo solo delle celle appartenenti alla griglia (0 o 1)
             // Per le celle di padding non aggiorno il conteggio (vale 0)
 
-            // Warp divergence !!
+            // Controllo che il vicino non sia fuori dalla griglia di gioco
+            // Se è fuori ZERO PADDING => Conto il suo contributo come zero
             if(neighbor_cell_x >= 0 && neighbor_cell_x < width 
                 && neighbor_cell_y >= 0 && neighbor_cell_y < height)
                 {
@@ -150,7 +151,7 @@ int main(int argc, char** argv) {
     //  2. dimensione dei blocchi (# th)
     dim3 dimGrid(
         (width + dimBlock.x - 1) / dimBlock.x,
-        (width + dimBlock.y - 1) / dimBlock.y
+        (height + dimBlock.y - 1) / dimBlock.y
     );
 
     u8* src = d_a;
