@@ -6,7 +6,7 @@
 #include <windows.h> // Necessario per le funzioni di performance counter
 
 // --- Costanti ---
-#define LOGIC_SIZE 64*5       // Dimensione effettiva della griglia N x N
+#define LOGIC_SIZE 32*5       // Dimensione effettiva della griglia N x N
 #define PADDED_SIZE (LOGIC_SIZE + 2) // 66x66 con zero-padding
 #define ALIGNMENT 16        // Allineamento richiesto da SSE
 
@@ -86,7 +86,7 @@ void update_with_sse(char* current_grid, char* next_grid) {
     const __m128i two_vec = _mm_set1_epi8(2);   // 0x02 per ogni byte    
     const __m128i one_vec = _mm_set1_epi8(1);   // 0x01 per ogni byte
     
-    // Loop sulle righe logiche (i = 1 a 64)
+    // Loop sulle righe logiche
     for (int i = 1; i <= LOGIC_SIZE; ++i) { 
         // puntatori all'inizio della riga precedente, corrente e successiva
         char* row_prev = current_grid + (i - 1) * PADDED_SIZE; 
@@ -94,7 +94,7 @@ void update_with_sse(char* current_grid, char* next_grid) {
         char* row_next = current_grid + (i + 1) * PADDED_SIZE;
         
         // Loop sulle colonne logiche (j = 1 a 64) in blocchi di 16 celle.
-        // Poiché 64 è multiplo di 16, non servono controlli sul bordo destro.
+        // Poiché 32 è multiplo di 16, non servono controlli sul bordo destro.
         for (int j = 1; j <= LOGIC_SIZE; j += 16) { 
 
             // Caricamenti sovrapposti per la riga precedente
@@ -195,44 +195,44 @@ static void initialize_b(char* grid){
             grid[i] = 0;
 }
 
-/* Conta vicini viventi attorno alla cella (r,c).
-   Bordi non avvolgenti: celle esterne contate come morte */
-static int count_neighbors(const char *g, int r, int c) {
-    int count = 0;
-    for (int dr = -1; dr <= 1; ++dr) {
-        int rr = r + dr;
-        if (rr < 0 || rr >= LOGIC_SIZE) continue;
-        for (int dc = -1; dc <= 1; ++dc) {
-            int cc = c + dc;
-            if (cc < 0 || cc >= LOGIC_SIZE) continue;
-            if (dr == 0 && dc == 0) continue; // stessa cella
-            count += g[rr * LOGIC_SIZE + cc] ? 1 : 0;
-        }
-    }
-    return count;
-}
-
 static void update_sequential(char* curr_grid, char* next_grid){
-    for (int r = 0; r < LOGIC_SIZE; ++r) {
-        for (int c = 0; c < LOGIC_SIZE; ++c) {
-            int n = count_neighbors(curr_grid, r, c);
-            char alive = curr_grid[r * LOGIC_SIZE + c];
-            char next = 0;
-            if (alive) {
-                // Sopravvive con 2 o 3 vicini, altrimenti muore
-                next = (n == 2 || n == 3) ? 1 : 0;
-            } else {
-                // Nasce se esattamente 3 vicini
-                next = (n == 3) ? 1 : 0;
-            }
-            next_grid[r * LOGIC_SIZE + c] = next;
+    
+    for (int row = 1; row <= LOGIC_SIZE; ++row) {
+        
+        // Calcoliamo l'offset della riga corrente una volta sola per risparmiare moltiplicazioni
+        int row_offset = row * PADDED_SIZE;
+        
+        for (int col = 1; col <= LOGIC_SIZE; ++col) {
+            
+            int idx = row_offset + col; // Indice della cella corrente
+            
+            // Conta i vicini sommando direttamente gli offset fissi
+            int n = 
+                curr_grid[idx - PADDED_SIZE - 1] + // Alto-Sinistra
+                curr_grid[idx - PADDED_SIZE]     + // Alto-Centro
+                curr_grid[idx - PADDED_SIZE + 1] + // Alto-Destra
+                curr_grid[idx - 1]               + // Sinistra
+                curr_grid[idx + 1]               + // Destra
+                curr_grid[idx + PADDED_SIZE - 1] + // Basso-Sinistra
+                curr_grid[idx + PADDED_SIZE]     + // Basso-Centro
+                curr_grid[idx + PADDED_SIZE + 1];  // Basso-Destra
+
+            // Applica le regole:
+            // Cella viva (1): sopravvive se n == 2 o n == 3
+            // Cella morta (0): nasce se n == 3
+            // Possiamo compattare la logica:
+            
+            char is_alive = curr_grid[idx];
+            
+            // Logica senza branch
+            next_grid[idx] = (n == 3) | (is_alive & (n == 2));
         }
     }
 }
         
 // --- Main Program ---
 int main() {
-    printf("Game of Life (64x64) C con SSE SIMD\n");
+    printf("Game of Life (32x32) C con SSE SIMD\n");
 
     // Istanti di inizio e fine per l'esecuzione
     // Variabili per il tempo sequenziale
@@ -247,16 +247,16 @@ int main() {
     double time_simd;
     
     
-    int generations = 15; // 5mila
+    int generations = 1500;
 
     // --------------------------------------- SEQUENZIALE ---------------------------------------
     
     // Alloca e inizializza le due griglie
-    char* grid_a = allocate_grid();
-    char* grid_b = allocate_grid();
+    char* grid_a = aligned_malloc_grid();
+    char* grid_b = aligned_malloc_grid();
 
-    initialize_glider_sequential(grid_a);
-    initialize_b(grid_b);
+    initialize_glider(grid_a);
+    //initialize_b(grid_b);
 
     char* current = grid_a;
     char* next = grid_b;
@@ -289,8 +289,8 @@ int main() {
     // Calcola il tempo in secondi
     time_seq = (double)(end_seq.QuadPart - start_seq.QuadPart) / frequency_seq.QuadPart;    
 
-    free(grid_a);
-    free(grid_b);
+    aligned_free_grid(grid_a);
+    aligned_free_grid(grid_b);
 
     // ------------------------ SIMD ------------------------
 
@@ -347,23 +347,24 @@ int main() {
     //Le istruzioni SSE (Streaming SIMD Extensions) lavorano tipicamente con registri da 128 bit (__m128i). 
     //Poiché usiamo char (che sono tipicamente 8 bit o 1 byte) per rappresentare le celle della griglia
     int ideal_parallelism = 16; // 128 bit / 8 bit per char
-    double efficiency_clocks = (speedup_clocks / ideal_parallelism) * 100.0;
-    double efficiency_time = (speedup_time / ideal_parallelism) * 100.0;
-
+    double efficiency_clocks = (speedup_clocks / ideal_parallelism);
+    double efficiency_time = (speedup_time / ideal_parallelism);
 
     // Liberazione della memoria
     aligned_free_grid(grid_a);
     aligned_free_grid(grid_b);
 
     printf("Elapsed clocks (SIMD): %lu\n", clock_counter_SIMD_end-clock_counter_SIMD_start);
-    printf("Tempo di esecuzione (SIMD): %f s\n", time_simd);
-    printf("Elapsed clocks (Sequential): %lu\n", clock_counter_sequential_end-clock_counter_sequential_start);
-    printf("Tempo di esecuzione (Sequenziale): %f s\n", time_seq);
+    printf("Tempo di esecuzione (SIMD): %f ms\n", time_simd*1000);
+    printf("-----------------------\n");
+    printf("Elapsed clocks (Sequenziale): %lu\n", clock_counter_sequential_end-clock_counter_sequential_start);
+    printf("Tempo di esecuzione (Sequenziale): %f ms\n", time_seq*1000);
+    printf("-----------------------\n");
     printf("Speed-up (clocks) = %3.2f\n", speedup_clocks*1.0);
     printf("Speed-up (time) = %3.2f\n", speedup_time*1.0);
     printf("Ideal Parallelism (P) = %d (128 bits / 8 bits)\n", ideal_parallelism);
-    printf("Efficiency (clocks) = %3.2f%%\n", efficiency_clocks);
-    printf("Efficiency (time) = %3.2f%%\n", efficiency_time);
+    printf("Efficiency (clocks) = %f\n", efficiency_clocks);
+    printf("Efficiency (time) = %f\n", efficiency_time);
     
     return 0;
 }
