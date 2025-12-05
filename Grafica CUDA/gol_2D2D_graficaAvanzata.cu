@@ -209,13 +209,17 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
 // -------------------- MAIN --------------------
 int main(int argc, char** argv) {
     // Parametri logici
-    const int width = 512;
-    const int height = 512;
-    const int SCALE = 2; // pixel per cell (display size = width*SCALE)
+    const int width = 2048;
+    const int height = 2048;
+    const int SCALE = 4; // pixel per cell (display size = width*SCALE)
     const int radius = 1;
 
     const int displayWidth = width * SCALE;
     const int displayHeight = height * SCALE;
+    
+    // Window size
+    const int WINDOW_WIDTH  = 1280;
+    const int WINDOW_HEIGHT = 720;
 
     g_display_w = displayWidth; g_display_h = displayHeight;
 
@@ -237,7 +241,7 @@ int main(int argc, char** argv) {
     // disable resize to keep things simple; you may enable it but then must recreate PBO/texture
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
-    GLFWwindow* win = glfwCreateWindow(displayWidth, displayHeight, "CUDA Game of Life - Zoom & Pan", NULL, NULL);
+    GLFWwindow* win = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "CUDA Game of Life - Zoom & Pan", NULL, NULL);
     if (!win) {
         fprintf(stderr, "Failed to create GLFW window");
         glfwTerminate();
@@ -467,6 +471,7 @@ int main(int argc, char** argv) {
         // 6) Draw fullscreen quad with pan/zoom
         glClear(GL_COLOR_BUFFER_BIT);
         glUseProgram(program);
+        // Set pan and zoom uniforms
         glUniform2f(loc_pan, g_pan_x, g_pan_y);
         glUniform1f(loc_zoom, g_zoom);
         glActiveTexture(GL_TEXTURE0);
