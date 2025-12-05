@@ -342,8 +342,14 @@ int main() {
     double speedup_clocks = (clock_counter_sequential_end - clock_counter_sequential_start) / (double)(clock_counter_SIMD_end - clock_counter_SIMD_start);
     double speedup_time = time_seq / time_simd;
 
-    //double efficiency_clocks = speedup_clocks / (double)num_cores;
-    //double efficiency_time = speedup_time / (double)num_cores;
+    //Il parallelismo ideale (P) in questo contesto è dato dal numero di elementi che 
+    //l'istruzione SIMD può processare contemporaneamente.
+    //Le istruzioni SSE (Streaming SIMD Extensions) lavorano tipicamente con registri da 128 bit (__m128i). 
+    //Poiché usiamo char (che sono tipicamente 8 bit o 1 byte) per rappresentare le celle della griglia
+    int ideal_parallelism = 16; // 128 bit / 8 bit per char
+    double efficiency_clocks = (speedup_clocks / ideal_parallelism) * 100.0;
+    double efficiency_time = (speedup_time / ideal_parallelism) * 100.0;
+
 
     // Liberazione della memoria
     aligned_free_grid(grid_a);
@@ -355,7 +361,9 @@ int main() {
     printf("Tempo di esecuzione (Sequenziale): %f s\n", time_seq);
     printf("Speed-up (clocks) = %3.2f\n", speedup_clocks*1.0);
     printf("Speed-up (time) = %3.2f\n", speedup_time*1.0);
-    //printf("Efficiency (clocks) = %3.2f\n", efficiency_clocks);
-    //printf("Efficiency (time) = %3.2f\n", efficiency_time);
+    printf("Ideal Parallelism (P) = %d (128 bits / 8 bits)\n", ideal_parallelism);
+    printf("Efficiency (clocks) = %3.2f%%\n", efficiency_clocks);
+    printf("Efficiency (time) = %3.2f%%\n", efficiency_time);
+    
     return 0;
 }
