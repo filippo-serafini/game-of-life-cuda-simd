@@ -157,17 +157,6 @@ int main(int argc, char** argv) {
     u8* src = d_a;
     u8* dst = d_b;
 
-    if (width <= 64 && height <= 64) // Stampa solo griglie di dim ragionevoli (max 64x64)
-    {
-        // Stampa della griglia iniziale
-        for (int row = 0; row < width; ++row) {
-            for (int col = 0; col < width; ++col)
-                putchar(h_board[row * width + col] ? '#' : '.');
-            putchar('\n');
-        }
-        putchar('\n');
-    }
-    
     // Kernel execution
     for (int s = 0; s < steps; ++s) {
         gol_step_2d2d<<<dimGrid, dimBlock>>>(src, dst, width, height, radius);
@@ -176,14 +165,6 @@ int main(int argc, char** argv) {
 
         // traferisco la griglia GPU -> CPU
         CHECK(cudaMemcpy(h_board, dst, total_bytes, cudaMemcpyDeviceToHost)); 
-
-        // Stampa della griglia
-        for (int row = 0; row < 64; ++row) {
-            for (int col = 0; col < 64; ++col)
-                putchar(h_board[row * width + col] ? '#' : '.');
-            putchar('\n');
-        }
-        putchar('\n');
 
         // Swap buffers
         u8* tmp = src;
