@@ -177,7 +177,6 @@ int main(int argc, char** argv) {
     int width = 1024;   // non più 32
     int height = 1024;  // non più 32
     int steps = 15;
-    int radius = 1;
 
     size_t griglia = size_t(width) * height;
     size_t total_bytes = griglia * sizeof(u8);
