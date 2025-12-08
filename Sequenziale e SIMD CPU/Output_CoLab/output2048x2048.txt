@@ -1,3 +1,4 @@
+15 STEPS
 -O0
 Game of Life (2048x2048) C con SSE SIMD
 Tempo di esecuzione totale (Sequenziale): 844.279874 ms
@@ -95,3 +96,105 @@ Speed-up generazioni = 3.16
 Ideal Parallelism (P) = 16 (128 bits / 8 bits)
 Efficiency totale = 0.086858 (o 8.69%)
 Efficiency generazioni = 0.197287 (o 19.73%)
+
+
+--------------- 0 ------------------------- 0 ---------------------- 0 -------------------------
+
+100 STEPS
+-O0
+Game of Life (2048x2048) 100-generazioni C con SSE SIMD
+Tempo di esecuzione totale (Sequenziale): 5058.355577 ms
+Tempo di esecuzione generazioni (Sequenziale): 4961.277026 ms
+-----------------------
+Tempo di esecuzione totale (SIMD): 1390.618003 ms
+Tempo di esecuzione generazioni (SIMD): 1291.978994 ms
+-----------------------
+Speed-up totale = 3.64
+Speed-up generazioni = 3.84
+Ideal Parallelism (P) = 16 (128 bits / 8 bits)
+Efficiency totale = 0.227343 (o 22.73%)
+Efficiency generazioni = 0.240004 (o 24.00%)
+
+-O1
+Game of Life (2048x2048) 100-generazioni C con SSE SIMD
+Tempo di esecuzione totale (Sequenziale): 1923.978009 ms
+Tempo di esecuzione generazioni (Sequenziale): 1829.575800 ms
+-----------------------
+Tempo di esecuzione totale (SIMD): 264.912937 ms
+Tempo di esecuzione generazioni (SIMD): 148.377937 ms
+-----------------------
+Speed-up totale = 7.26
+Speed-up generazioni = 12.33
+Ideal Parallelism (P) = 16 (128 bits / 8 bits)
+Efficiency totale = 0.453918 (o 45.39%)
+Efficiency generazioni = 0.770657 (o 77.07%)
+
+-O2
+Game of Life (2048x2048) 100-generazioni C con SSE SIMD
+Tempo di esecuzione totale (Sequenziale): 1568.888710 ms
+Tempo di esecuzione generazioni (Sequenziale): 1452.109408 ms
+-----------------------
+Tempo di esecuzione totale (SIMD): 194.755914 ms
+Tempo di esecuzione generazioni (SIMD): 104.191335 ms
+-----------------------
+Speed-up totale = 8.06
+Speed-up generazioni = 13.94
+Ideal Parallelism (P) = 16 (128 bits / 8 bits)
+Efficiency totale = 0.503479 (o 50.35%)
+Efficiency generazioni = 0.871059 (o 87.11%)
+
+-O3
+Game of Life (2048x2048) 100-generazioni C con SSE SIMD
+Tempo di esecuzione totale (Sequenziale): 493.005686 ms
+Tempo di esecuzione generazioni (Sequenziale): 397.938410 ms
+-----------------------
+Tempo di esecuzione totale (SIMD): 193.187064 ms
+Tempo di esecuzione generazioni (SIMD): 93.222514 ms
+-----------------------
+Speed-up totale = 2.55
+Speed-up generazioni = 4.27
+Ideal Parallelism (P) = 16 (128 bits / 8 bits)
+Efficiency totale = 0.159498 (o 15.95%)
+Efficiency generazioni = 0.266793 (o 26.68%)
+
+-O4
+Game of Life (2048x2048) 100-generazioni C con SSE SIMD
+Tempo di esecuzione totale (Sequenziale): 468.163285 ms
+Tempo di esecuzione generazioni (Sequenziale): 375.358946 ms
+-----------------------
+Tempo di esecuzione totale (SIMD): 182.988111 ms
+Tempo di esecuzione generazioni (SIMD): 91.887123 ms
+-----------------------
+Speed-up totale = 2.56
+Speed-up generazioni = 4.09
+Ideal Parallelism (P) = 16 (128 bits / 8 bits)
+Efficiency totale = 0.159902 (o 15.99%)
+Efficiency generazioni = 0.255313 (o 25.53%)
+
+-O5
+Game of Life (2048x2048) 100-generazioni C con SSE SIMD
+Tempo di esecuzione totale (Sequenziale): 483.227733 ms
+Tempo di esecuzione generazioni (Sequenziale): 390.656080 ms
+-----------------------
+Tempo di esecuzione totale (SIMD): 181.612653 ms
+Tempo di esecuzione generazioni (SIMD): 90.587047 ms
+-----------------------
+Speed-up totale = 2.66
+Speed-up generazioni = 4.31
+Ideal Parallelism (P) = 16 (128 bits / 8 bits)
+Efficiency totale = 0.166298 (o 16.63%)
+Efficiency generazioni = 0.269531 (o 26.95%)
+
+-O6
+Game of Life (2048x2048) 100-generazioni C con SSE SIMD
+Tempo di esecuzione totale (Sequenziale): 464.080178 ms
+Tempo di esecuzione generazioni (Sequenziale): 372.223405 ms
+-----------------------
+Tempo di esecuzione totale (SIMD): 193.118669 ms
+Tempo di esecuzione generazioni (SIMD): 93.553528 ms
+-----------------------
+Speed-up totale = 2.40
+Speed-up generazioni = 3.98
+Ideal Parallelism (P) = 16 (128 bits / 8 bits)
+Efficiency totale = 0.150193 (o 15.02%)
+Efficiency generazioni = 0.248670 (o 24.87%)
