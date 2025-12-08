@@ -38,11 +38,14 @@ __global__ void gol_step_2d2d(u8* src, u8* dst, int width, int height, int RADIU
     int neighbors_alive = 0;
     for (int dy = -RADIUS; dy <= RADIUS; ++dy) {
         for (int dx = -RADIUS; dx <= RADIUS; ++dx) {
-            int nx = cell_index_x + dx;
-            int ny = cell_index_y + dy;
-            if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-                neighbors_alive += src[ny * width + nx];
-            }
+            int neighbor_cell_x = cell_index_x + dx;
+            int neighbor_cell_y = cell_index_y + dy;
+
+            if(neighbor_cell_x >= 0 && neighbor_cell_x < width 
+                && neighbor_cell_y >= 0 && neighbor_cell_y < height)
+                {
+                    neighbors_alive += src[neighbor_cell_y * width + neighbor_cell_x];
+                }
         }
     }
 
@@ -144,7 +147,8 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
-    // aggiorna viewport; la texture/PBO non vengono ricreati (finestra non ridimensionabile nella build corrente)
+    // aggiorna viewport; la texture/PBO non vengono ricreati 
+    // (finestra non ridimensionabile nella build corrente)
     glViewport(0, 0, width, height);
     g_display_w = width; g_display_h = height;
 }
@@ -236,6 +240,8 @@ int main(int argc, char** argv) {
     const int SCALE = 4; // pixel per cell (display size = width*SCALE)
     const int radius = 1;
 
+    int steps = 0;
+
     const int displayWidth = width * SCALE;
     const int displayHeight = height * SCALE;
     
@@ -260,7 +266,8 @@ int main(int argc, char** argv) {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    // disable resize to keep things simple; you may enable it but then must recreate PBO/texture
+    // disabilita resizing per semplicità
+    // altrimenti bisognerebbe ricreare PBO/texture nel callback
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
     GLFWwindow* win = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "CUDA Game of Life - Zoom & Pan", NULL, NULL);
@@ -285,6 +292,7 @@ int main(int argc, char** argv) {
         return -1;
     }
 
+    // Viewport setup
     int fbW, fbH;
     glfwGetFramebufferSize(win, &fbW, &fbH);
     glViewport(0, 0, fbW, fbH);
@@ -444,7 +452,7 @@ int main(int argc, char** argv) {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
     // -------------------- Main loop --------------------
-    while (!glfwWindowShouldClose(win)) {
+    while (!glfwWindowShouldClose(win)) { //&& steps < 100 per aggiungere un limite di step
         glfwPollEvents();
 
         // 1) Step Gol
@@ -462,9 +470,9 @@ int main(int argc, char** argv) {
             u8* tmp = src; 
             src = dst; 
             dst = tmp;
+
+            steps++;
         }
-        
-        
 
         // 2) Map PBO and get pointer
         CHECK(cudaGraphicsMapResources(1, &cuda_pbo, 0));
