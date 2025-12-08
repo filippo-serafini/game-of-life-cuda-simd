@@ -14,7 +14,7 @@
 #endif
 
 // --- Costanti ---
-#define LOGIC_SIZE 32       // Dimensione effettiva della griglia N x N
+#define LOGIC_SIZE 2048       // Dimensione effettiva della griglia N x N
 #define PADDED_SIZE (LOGIC_SIZE + 2) // N+2 x N+2 con zero-padding
 #define ALIGNMENT 16        // Allineamento richiesto da SSE
 
@@ -76,6 +76,27 @@ void initialize_glider(char* grid_data) {
     grid_data[(r + 2) * PADDED_SIZE + c] = 1;
     grid_data[(r + 2) * PADDED_SIZE + c + 1] = 1;
     grid_data[(r + 2) * PADDED_SIZE + c + 2] = 1;
+}
+
+// Inizializza la griglia con valori 0 o 1 in modo deterministico (Versione SIMD/Padded)
+void init_random_reproducible(char* grid, int width, int height, unsigned int seed) {
+    // Azzeramento di TUTTA la griglia (con padding) 
+    // gia' fatto nella malloc allineata
+    
+    // Probabilità che sia 0 o 1
+    float probability = 0.5;
+    // Seed riproducibile
+    srand(seed);
+
+    // Inizializza solo la zona logica (1..LOGIC_SIZE) saltando il padding
+    for (int i = 1; i <= LOGIC_SIZE; ++i) {
+        for (int j = 1; j <= LOGIC_SIZE; ++j) {
+            // Genera un float tra 0.0 e 1.0
+            float r = (float)(rand()) / (float)(RAND_MAX);
+            // Se r è minore della probabilità (es. 0.5), la cella è viva (1), altrimenti morta (0)
+            grid[i * PADDED_SIZE + j] = (r < probability) ? 1 : 0;
+        }
+    }
 }
 
 // Stampa la griglia (solo la parte LOGIC_SIZE x LOGIC_SIZE)
@@ -175,6 +196,26 @@ void initialize_glider_sequential(char* grid_data) {
     grid_data[(r + 2) * LOGIC_SIZE + c + 1] = 1;
 }
 
+// Inizializza la griglia con valori 0 o 1 in modo deterministico (Versione Sequenziale)
+void init_random_reproducible_sequential(char* grid, int width, int height, unsigned int seed) {
+    
+    // Probabilità che sia 0 o 1
+    float probability = 0.5;
+    // Seed riproducibile
+    srand(seed);
+
+    int total_cells = width * height;
+
+    for (int i = 0; i < total_cells; ++i) {
+        // Genera un float tra 0.0 e 1.0
+        float r = (float)(rand()) / (float)(RAND_MAX);
+        
+        // Se r è minore della probabilità (es. 0.5), la cella è viva (1), altrimenti morta (0)
+        grid[i] = (r < probability) ? 1 : 0;
+    }
+}
+
+// Funzione di aggiornamento sequenziale
 static void update_sequential(char* curr_grid, char* next_grid){
 
     // La versione sequenziale deve usare gli indici della griglia NON-PADDED per funzionare correttamente
@@ -229,7 +270,7 @@ int main() {
     char* grid_a = aligned_malloc_grid();
     char* grid_b = aligned_malloc_grid();
 
-    initialize_glider(grid_a);
+    init_random_reproducible_sequential(grid_a, LOGIC_SIZE, LOGIC_SIZE, 42);
 
     char* current = grid_a;
     char* next = grid_b;
@@ -277,7 +318,7 @@ int main() {
         return 1;
     }
 
-    initialize_glider(grid_a);
+    init_random_reproducible(grid_a, LOGIC_SIZE, LOGIC_SIZE, 42);
 
     current = grid_a;
     next = grid_b;

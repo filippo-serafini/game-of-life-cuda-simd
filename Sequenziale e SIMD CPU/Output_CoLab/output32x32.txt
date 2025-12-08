@@ -1,0 +1,69 @@
+-O0
+Game of Life (32x32) C con SSE SIMD
+Tempo di esecuzione (SIMD): 0.069230 ms
+-----------------------
+Tempo di esecuzione (Sequenziale): 0.259983 ms
+-----------------------
+Speed-up (time) = 3.76
+Ideal Parallelism (P) = 16 (128 bits / 8 bits)
+Efficiency (time) = 0.234709 (o 23.47%)
+
+-O1
+Game of Life (32x32) C con SSE SIMD
+Tempo di esecuzione (SIMD): 0.004791 ms
+-----------------------
+Tempo di esecuzione (Sequenziale): 0.053090 ms
+-----------------------
+Speed-up (time) = 11.08
+Ideal Parallelism (P) = 16 (128 bits / 8 bits)
+Efficiency (time) = 0.692575 (o 69.26%)
+
+-O2
+Game of Life (32x32) C con SSE SIMD
+Tempo di esecuzione (SIMD): 0.002857 ms
+-----------------------
+Tempo di esecuzione (Sequenziale): 0.080390 ms
+-----------------------
+Speed-up (time) = 28.14
+Ideal Parallelism (P) = 16 (128 bits / 8 bits)
+Efficiency (time) = 1.758619 (o 175.86%)
+
+-O3
+Game of Life (32x32) C con SSE SIMD
+Tempo di esecuzione (SIMD): 0.002371 ms
+-----------------------
+Tempo di esecuzione (Sequenziale): 0.017768 ms
+-----------------------
+Speed-up (time) = 7.49
+Ideal Parallelism (P) = 16 (128 bits / 8 bits)
+Efficiency (time) = 0.468368 (o 46.84%)
+
+-O4
+Game of Life (32x32) C con SSE SIMD
+Tempo di esecuzione (SIMD): 0.002356 ms
+-----------------------
+Tempo di esecuzione (Sequenziale): 0.021865 ms
+-----------------------
+Speed-up (time) = 9.28
+Ideal Parallelism (P) = 16 (128 bits / 8 bits)
+Efficiency (time) = 0.580035 (o 58.00%)
+
+-O5
+Game of Life (32x32) C con SSE SIMD
+Tempo di esecuzione (SIMD): 0.004089 ms
+-----------------------
+Tempo di esecuzione (Sequenziale): 0.017211 ms
+-----------------------
+Speed-up (time) = 4.21
+Ideal Parallelism (P) = 16 (128 bits / 8 bits)
+Efficiency (time) = 0.263069 (o 26.31%)
+
+-O6
+Game of Life (32x32) C con SSE SIMD
+Tempo di esecuzione (SIMD): 0.002371 ms
+-----------------------
+Tempo di esecuzione (Sequenziale): 0.016682 ms
+-----------------------
+Speed-up (time) = 7.04
+Ideal Parallelism (P) = 16 (128 bits / 8 bits)
+Efficiency (time) = 0.439741 (o 43.97%)
