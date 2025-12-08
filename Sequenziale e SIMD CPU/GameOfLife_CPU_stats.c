@@ -252,8 +252,12 @@ static void update_sequential(char* curr_grid, char* next_grid){
 int main() {
     printf("Game of Life (%dx%d) C con SSE SIMD\n", LOGIC_SIZE, LOGIC_SIZE);
 
+    //varibili per tempo sequenziale
     double time_seq_start, time_seq_end, time_seq;
+    double time_seq_start_tot, time_seq_end_tot, time_seq_tot;
+    //variabili per tempo simd
     double time_simd_start, time_simd_end, time_simd;
+    double time_simd_start_tot, time_simd_end_tot, time_simd_tot;
 
     // Variabili Windows per i contatori ad alta risoluzione
 #if defined(_WIN32)
@@ -265,6 +269,15 @@ int main() {
 
     // --------------------------------------- SEQUENZIALE ---------------------------------------
 
+    // ISTANTE DI INIZIO TOTALE SEQUENZIALE
+    #if defined(__APPLE__) || defined(__linux__)
+        time_seq_start_tot = get_time_posix();
+    #else // Windows
+        LARGE_INTEGER start_win_seq_tot;
+        QueryPerformanceCounter(&start_win_seq_tot);
+        time_seq_start_tot = (double)start_win_seq_tot.QuadPart;
+    #endif
+
     // Alloca e inizializza le due griglie allineate (usiamo le funzioni allineate anche per la seq
     // per coerenza e per usare update_sequential con gli indici PADDED)
     char* grid_a = aligned_malloc_grid();
@@ -275,14 +288,14 @@ int main() {
     char* current = grid_a;
     char* next = grid_b;
 
-    // ISTANTE DI INIZIO SEQUENZIALE
-#if defined(__APPLE__) || defined(__linux__)
-    time_seq_start = get_time_posix();
-#else // Windows
-    LARGE_INTEGER start_win_seq;
-    QueryPerformanceCounter(&start_win_seq);
-    time_seq_start = (double)start_win_seq.QuadPart;
-#endif
+    // ISTANTE DI INIZIO CALCOLO GENERAZIONI SEQUENZIALE
+    #if defined(__APPLE__) || defined(__linux__)
+        time_seq_start = get_time_posix();
+    #else // Windows
+        LARGE_INTEGER start_win_seq;
+        QueryPerformanceCounter(&start_win_seq);
+        time_seq_start = (double)start_win_seq.QuadPart;
+    #endif
 
     for (int g = 0; g < generations; ++g) {
         update_sequential(current, next);
@@ -293,21 +306,41 @@ int main() {
         next = temp;
     }
 
-    // ISTANTE FINALE SEQUENZIALE
-#if defined(__APPLE__) || defined(__linux__)
-    time_seq_end = get_time_posix();
-    time_seq = time_seq_end - time_seq_start;
-#else // Windows
-    LARGE_INTEGER end_win_seq;
-    QueryPerformanceCounter(&end_win_seq);
-    time_seq_end = (double)end_win_seq.QuadPart;
-    time_seq = (time_seq_end - time_seq_start) / frequency_win.QuadPart;
-#endif
+    // ISTANTE FINALE CALCOLO GENERAZIONI SEQUENZIALE
+    #if defined(__APPLE__) || defined(__linux__)
+        time_seq_end = get_time_posix();
+        time_seq = time_seq_end - time_seq_start;
+    #else // Windows
+        LARGE_INTEGER end_win_seq;
+        QueryPerformanceCounter(&end_win_seq);
+        time_seq_end = (double)end_win_seq.QuadPart;
+        time_seq = (time_seq_end - time_seq_start) / frequency_win.QuadPart;
+    #endif
 
     aligned_free_grid(grid_a);
     aligned_free_grid(grid_b);
 
+    // ISTANTE FINALE TOTALE SEQUENZIALE
+    #if defined(__APPLE__) || defined(__linux__)
+        time_seq_end_tot = get_time_posix();
+        time_seq_tot = time_seq_end_tot - time_seq_start_tot;
+    #else // Windows
+        LARGE_INTEGER end_win_seq_tot;
+        QueryPerformanceCounter(&end_win_seq_tot);
+        time_seq_end_tot = (double)end_win_seq_tot.QuadPart;
+        time_seq_tot = (time_seq_end_tot - time_seq_start_tot) / frequency_win.QuadPart;
+    #endif
+
     // ------------------------ SIMD ------------------------
+
+    // ISTANTE DI INIZIO TOTALE SIMD
+    #if defined(__APPLE__) || defined(__linux__)
+        time_simd_start_tot = get_time_posix();
+    #else // Windows
+        LARGE_INTEGER start_win_simd_tot;
+        QueryPerformanceCounter(&start_win_simd_tot);
+        time_simd_start_tot = (double)start_win_simd_tot.QuadPart;
+    #endif
 
     // Alloca e inizializza le due griglie
     grid_a = aligned_malloc_grid();
@@ -323,14 +356,14 @@ int main() {
     current = grid_a;
     next = grid_b;
 
-    // ISTANTE DI INIZIO SIMD
-#if defined(__APPLE__) || defined(__linux__)
-    time_simd_start = get_time_posix();
-#else // Windows
-    LARGE_INTEGER start_win_simd;
-    QueryPerformanceCounter(&start_win_simd);
-    time_simd_start = (double)start_win_simd.QuadPart;
-#endif
+    // ISTANTE DI INIZIO CALCOLO GENERAZIONI SIMD
+    #if defined(__APPLE__) || defined(__linux__)
+        time_simd_start = get_time_posix();
+    #else // Windows
+        LARGE_INTEGER start_win_simd;
+        QueryPerformanceCounter(&start_win_simd);
+        time_simd_start = (double)start_win_simd.QuadPart;
+    #endif
 
     for (int g = 0; g < generations; ++g) {
         update_with_sse(current, next);
@@ -341,34 +374,53 @@ int main() {
         next = temp;
     }
 
-    // ISTANTE FINALE SIMD
-#if defined(__APPLE__) || defined(__linux__)
-    time_simd_end = get_time_posix();
-    time_simd = time_simd_end - time_simd_start;
-#else // Windows
-    LARGE_INTEGER end_win_simd;
-    QueryPerformanceCounter(&end_win_simd);
-    time_simd_end = (double)end_win_simd.QuadPart;
-    time_simd = (time_simd_end - time_simd_start) / frequency_win.QuadPart;
-#endif
-
-    double speedup_time = time_seq / time_simd;
-
-    // Il parallelismo ideale (P) è 16 per SSE (128 bit) e char (8 bit)
-    int ideal_parallelism = 16;
-    double efficiency_time = (speedup_time / ideal_parallelism);
+    // ISTANTE FINALE CALCOLO GENERAZIONI SIMD
+    #if defined(__APPLE__) || defined(__linux__)
+        time_simd_end = get_time_posix();
+        time_simd = time_simd_end - time_simd_start;
+    #else // Windows
+        LARGE_INTEGER end_win_simd;
+        QueryPerformanceCounter(&end_win_simd);
+        time_simd_end = (double)end_win_simd.QuadPart;
+        time_simd = (time_simd_end - time_simd_start) / frequency_win.QuadPart;
+    #endif
 
     // Liberazione della memoria
     aligned_free_grid(grid_a);
     aligned_free_grid(grid_b);
 
-    printf("Tempo di esecuzione (SIMD): %f ms\n", time_simd * 1000);
+    // ISTANTE FINALE TOTALE SIMD
+    #if defined(__APPLE__) || defined(__linux__)
+        time_simd_end_tot = get_time_posix();
+        time_simd_tot = time_simd_end_tot - time_simd_start_tot;
+    #else // Windows
+        LARGE_INTEGER end_win_simd_tot;
+        QueryPerformanceCounter(&end_win_simd_tot);
+        time_simd_end_tot = (double)end_win_simd_tot.QuadPart;
+        time_simd_tot = (time_simd_end_tot - time_simd_start_tot) / frequency_win.QuadPart;
+    #endif
+
+    // ------------------------ CALCOLO STATISTICHE ------------------------
+    double speedup_time = time_seq / time_simd;
+    double speedup_time_tot = time_seq_tot / time_simd_tot;
+
+    // Il parallelismo ideale (P) è 16 per SSE (128 bit) e char (8 bit)
+    int ideal_parallelism = 16;
+    double efficiency_time = (speedup_time / ideal_parallelism);
+    double efficiency_time_tot = (speedup_time_tot / ideal_parallelism);
+
+    // ------------------------ STAMPA RISULTATI ------------------------
+    printf("Tempo di esecuzione totale (Sequenziale): %f ms\n", time_seq_tot * 1000);
+    printf("Tempo di esecuzione generazioni (Sequenziale): %f ms\n", time_seq * 1000);
     printf("-----------------------\n");
-    printf("Tempo di esecuzione (Sequenziale): %f ms\n", time_seq * 1000);
+    printf("Tempo di esecuzione totale (SIMD): %f ms\n", time_simd_tot * 1000);
+    printf("Tempo di esecuzione generazioni (SIMD): %f ms\n", time_simd * 1000);
     printf("-----------------------\n");
-    printf("Speed-up (time) = %3.2f\n", speedup_time * 1.0);
+    printf("Speed-up totale = %3.2f\n", speedup_time_tot * 1.0);
+    printf("Speed-up generazioni = %3.2f\n", speedup_time * 1.0);
     printf("Ideal Parallelism (P) = %d (128 bits / 8 bits)\n", ideal_parallelism);
-    printf("Efficiency (time) = %f (o %3.2f%%)\n", efficiency_time, efficiency_time * 100.0);
+    printf("Efficiency totale = %f (o %3.2f%%)\n", efficiency_time_tot, efficiency_time_tot * 100.0);
+    printf("Efficiency generazioni = %f (o %3.2f%%)\n", efficiency_time, efficiency_time * 100.0);
 
     return 0;
 }

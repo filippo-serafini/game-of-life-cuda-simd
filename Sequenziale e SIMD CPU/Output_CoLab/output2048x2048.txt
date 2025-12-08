@@ -1,69 +1,97 @@
 -O0
 Game of Life (2048x2048) C con SSE SIMD
-Tempo di esecuzione (SIMD): 186.495459 ms
+Tempo di esecuzione totale (Sequenziale): 844.279874 ms
+Tempo di esecuzione generazioni (Sequenziale): 745.419168 ms
 -----------------------
-Tempo di esecuzione (Sequenziale): 741.567239 ms
+Tempo di esecuzione totale (SIMD): 288.933141 ms
+Tempo di esecuzione generazioni (SIMD): 191.490225 ms
 -----------------------
-Speed-up (time) = 3.98
+Speed-up totale = 2.92
+Speed-up generazioni = 3.89
 Ideal Parallelism (P) = 16 (128 bits / 8 bits)
-Efficiency (time) = 0.248521 (o 24.85%)
+Efficiency totale = 0.182629 (o 18.26%)
+Efficiency generazioni = 0.243295 (o 24.33%)
 
 -O1
 Game of Life (2048x2048) C con SSE SIMD
-Tempo di esecuzione (SIMD): 14.244338 ms
+Tempo di esecuzione totale (Sequenziale): 279.521620 ms
+Tempo di esecuzione generazioni (Sequenziale): 184.991744 ms
 -----------------------
-Tempo di esecuzione (Sequenziale): 171.505626 ms
+Tempo di esecuzione totale (SIMD): 106.420735 ms
+Tempo di esecuzione generazioni (SIMD): 14.850603 ms
 -----------------------
-Speed-up (time) = 12.04
+Speed-up totale = 2.63
+Speed-up generazioni = 12.46
 Ideal Parallelism (P) = 16 (128 bits / 8 bits)
-Efficiency (time) = 0.752517 (o 75.25%)
+Efficiency totale = 0.164161 (o 16.42%)
+Efficiency generazioni = 0.778553 (o 77.86%)
 
 -O2
 Game of Life (2048x2048) C con SSE SIMD
-Tempo di esecuzione (SIMD): 14.901933 ms
+Tempo di esecuzione totale (Sequenziale): 274.664916 ms
+Tempo di esecuzione generazioni (Sequenziale): 178.589056 ms
 -----------------------
-Tempo di esecuzione (Sequenziale): 197.005239 ms
+Tempo di esecuzione totale (SIMD): 108.381317 ms
+Tempo di esecuzione generazioni (SIMD): 14.424519 ms
 -----------------------
-Speed-up (time) = 13.22
+Speed-up totale = 2.53
+Speed-up generazioni = 12.38
 Ideal Parallelism (P) = 16 (128 bits / 8 bits)
-Efficiency (time) = 0.826257 (o 82.63%)
+Efficiency totale = 0.158390 (o 15.84%)
+Efficiency generazioni = 0.773809 (o 77.38%)
 
 -O3
 Game of Life (2048x2048) C con SSE SIMD
-Tempo di esecuzione (SIMD): 14.701003 ms
+Tempo di esecuzione totale (Sequenziale): 148.723500 ms
+Tempo di esecuzione generazioni (Sequenziale): 56.611397 ms
 -----------------------
-Tempo di esecuzione (Sequenziale): 60.362495 ms
+Tempo di esecuzione totale (SIMD): 106.905018 ms
+Tempo di esecuzione generazioni (SIMD): 14.785458 ms
 -----------------------
-Speed-up (time) = 4.11
+Speed-up totale = 1.39
+Speed-up generazioni = 3.83
 Ideal Parallelism (P) = 16 (128 bits / 8 bits)
-Efficiency (time) = 0.256626 (o 25.66%)
+Efficiency totale = 0.086948 (o 8.69%)
+Efficiency generazioni = 0.239304 (o 23.93%)
 
 -O4
 Game of Life (2048x2048) C con SSE SIMD
-Tempo di esecuzione (SIMD): 15.120288 ms
+Tempo di esecuzione totale (Sequenziale): 163.805125 ms
+Tempo di esecuzione generazioni (Sequenziale): 66.416525 ms
 -----------------------
-Tempo di esecuzione (Sequenziale): 58.725020 ms
+Tempo di esecuzione totale (SIMD): 108.588652 ms
+Tempo di esecuzione generazioni (SIMD): 14.454080 ms
 -----------------------
-Speed-up (time) = 3.88
+Speed-up totale = 1.51
+Speed-up generazioni = 4.60
 Ideal Parallelism (P) = 16 (128 bits / 8 bits)
-Efficiency (time) = 0.242741 (o 24.27%)
+Efficiency totale = 0.094281 (o 9.43%)
+Efficiency generazioni = 0.287188 (o 28.72%)
 
 -O5
 Game of Life (2048x2048) C con SSE SIMD
-Tempo di esecuzione (SIMD): 14.698785 ms
+Tempo di esecuzione totale (Sequenziale): 150.762240 ms
+Tempo di esecuzione generazioni (Sequenziale): 57.545310 ms
 -----------------------
-Tempo di esecuzione (Sequenziale): 66.284993 ms
+Tempo di esecuzione totale (SIMD): 113.157773 ms
+Tempo di esecuzione generazioni (SIMD): 18.908309 ms
 -----------------------
-Speed-up (time) = 4.51
+Speed-up totale = 1.33
+Speed-up generazioni = 3.04
 Ideal Parallelism (P) = 16 (128 bits / 8 bits)
-Efficiency (time) = 0.281847 (o 28.18%)
+Efficiency totale = 0.083270 (o 8.33%)
+Efficiency generazioni = 0.190212 (o 19.02%)
 
 -O6
 Game of Life (2048x2048) C con SSE SIMD
-Tempo di esecuzione (SIMD): 15.667773 ms
+Tempo di esecuzione totale (Sequenziale): 153.585786 ms
+Tempo di esecuzione generazioni (Sequenziale): 59.376699 ms
 -----------------------
-Tempo di esecuzione (Sequenziale): 57.618309 ms
+Tempo di esecuzione totale (SIMD): 110.515063 ms
+Tempo di esecuzione generazioni (SIMD): 18.810402 ms
 -----------------------
-Speed-up (time) = 3.68
+Speed-up totale = 1.39
+Speed-up generazioni = 3.16
 Ideal Parallelism (P) = 16 (128 bits / 8 bits)
-Efficiency (time) = 0.229844 (o 22.98%)
+Efficiency totale = 0.086858 (o 8.69%)
+Efficiency generazioni = 0.197287 (o 19.73%)
