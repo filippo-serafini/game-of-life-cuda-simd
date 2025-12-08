@@ -1,0 +1,97 @@
+-O0
+Game of Life (1024x1024) C con SSE SIMD
+Tempo di esecuzione totale (Sequenziale): 210.914132 ms
+Tempo di esecuzione generazioni (Sequenziale): 184.850413 ms
+-----------------------
+Tempo di esecuzione totale (SIMD): 71.267505 ms
+Tempo di esecuzione generazioni (SIMD): 47.023725 ms
+-----------------------
+Speed-up totale = 2.96
+Speed-up generazioni = 3.93
+Ideal Parallelism (P) = 16 (128 bits / 8 bits)
+Efficiency totale = 0.184967 (o 18.50%)
+Efficiency generazioni = 0.245688 (o 24.57%)
+
+-O1
+Game of Life (1024x1024) C con SSE SIMD
+Tempo di esecuzione totale (Sequenziale): 110.514653 ms
+Tempo di esecuzione generazioni (Sequenziale): 76.967140 ms
+-----------------------
+Tempo di esecuzione totale (SIMD): 35.288017 ms
+Tempo di esecuzione generazioni (SIMD): 5.063598 ms
+-----------------------
+Speed-up totale = 3.13
+Speed-up generazioni = 15.20
+Ideal Parallelism (P) = 16 (128 bits / 8 bits)
+Efficiency totale = 0.195737 (o 19.57%)
+Efficiency generazioni = 0.950006 (o 95.00%)
+
+-O2
+Game of Life (1024x1024) C con SSE SIMD
+Tempo di esecuzione totale (Sequenziale): 116.985389 ms
+Tempo di esecuzione generazioni (Sequenziale): 86.255458 ms
+-----------------------
+Tempo di esecuzione totale (SIMD): 33.929793 ms
+Tempo di esecuzione generazioni (SIMD): 4.227362 ms
+-----------------------
+Speed-up totale = 3.45
+Speed-up generazioni = 20.40
+Ideal Parallelism (P) = 16 (128 bits / 8 bits)
+Efficiency totale = 0.215492 (o 21.55%)
+Efficiency generazioni = 1.275255 (o 127.53%)
+
+-O3
+Game of Life (1024x1024) C con SSE SIMD
+Tempo di esecuzione totale (Sequenziale): 59.431784 ms
+Tempo di esecuzione generazioni (Sequenziale): 25.978816 ms
+-----------------------
+Tempo di esecuzione totale (SIMD): 31.449144 ms
+Tempo di esecuzione generazioni (SIMD): 5.185118 ms
+-----------------------
+Speed-up totale = 1.89
+Speed-up generazioni = 5.01
+Ideal Parallelism (P) = 16 (128 bits / 8 bits)
+Efficiency totale = 0.118111 (o 11.81%)
+Efficiency generazioni = 0.313142 (o 31.31%)
+
+-O4
+Game of Life (1024x1024) C con SSE SIMD
+Tempo di esecuzione totale (Sequenziale): 59.036256 ms
+Tempo di esecuzione generazioni (Sequenziale): 25.601289 ms
+-----------------------
+Tempo di esecuzione totale (SIMD): 33.539094 ms
+Tempo di esecuzione generazioni (SIMD): 5.079915 ms
+-----------------------
+Speed-up totale = 1.76
+Speed-up generazioni = 5.04
+Ideal Parallelism (P) = 16 (128 bits / 8 bits)
+Efficiency totale = 0.110014 (o 11.00%)
+Efficiency generazioni = 0.314982 (o 31.50%)
+
+-O5
+Game of Life (1024x1024) C con SSE SIMD
+Tempo di esecuzione totale (Sequenziale): 71.424917 ms
+Tempo di esecuzione generazioni (Sequenziale): 28.017610 ms
+-----------------------
+Tempo di esecuzione totale (SIMD): 35.160053 ms
+Tempo di esecuzione generazioni (SIMD): 9.110076 ms
+-----------------------
+Speed-up totale = 2.03
+Speed-up generazioni = 3.08
+Ideal Parallelism (P) = 16 (128 bits / 8 bits)
+Efficiency totale = 0.126964 (o 12.70%)
+Efficiency generazioni = 0.192216 (o 19.22%)
+
+-O6
+Game of Life (1024x1024) C con SSE SIMD
+Tempo di esecuzione totale (Sequenziale): 58.854992 ms
+Tempo di esecuzione generazioni (Sequenziale): 27.335613 ms
+-----------------------
+Tempo di esecuzione totale (SIMD): 30.603932 ms
+Tempo di esecuzione generazioni (SIMD): 4.939680 ms
+-----------------------
+Speed-up totale = 1.92
+Speed-up generazioni = 5.53
+Ideal Parallelism (P) = 16 (128 bits / 8 bits)
+Efficiency totale = 0.120195 (o 12.02%)
+Efficiency generazioni = 0.345868 (o 34.59%)
