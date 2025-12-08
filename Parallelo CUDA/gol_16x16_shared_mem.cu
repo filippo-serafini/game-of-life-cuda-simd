@@ -47,6 +47,13 @@ __global__ void gol_step_shared(u8* src, u8* dst, int width, int height) {
     // --- CARICAMENTO IN SHARED MEMORY ---
     
     // Caricamento della cella centrale (propria del thread)
+    /*
+       Ottima ottimizzazione degli accessi => ogni thread accede alla sua cella in maniera coalescente. 
+       Il thread 0 accede a x, il thread 1 accede a x+1 ecc...
+       Essendo 32 thread x warp => ogni warp chiede 32 byte => un'unica transazione
+       Il mem controller vede questa cosa e raccoglie tutte le richieste del warp in 
+       una sola transazione da 32
+    */
     // Controllo bounds globali
     if (global_x < width && global_y < height) {
         tile[shared_y][shared_x] = src[global_y * width + global_x];
@@ -62,6 +69,12 @@ __global__ void gol_step_shared(u8* src, u8* dst, int width, int height) {
     // Halo Superiore
     // riga 0 -> o è l'ultima riga del blocco precedente
     // o è riga con tutti 0 di zero-padding
+    /*
+        Ottimizzazione buonina => solo i thread che accedono alla riga 0 eseguono questa istruzione ad indirizzi contigui (coalesced):
+        con blocchi 16x16 => 16 thread (metà warp) => 16 byte.
+        In questo modo solo 16 dei 32 byte richiesti saranno utilizzati.
+        Ma comunque il dato sarà già presente per il blocco che detiene quella riga in L2 (più veloce della DRAM)
+    */
     if (local_y < RADIUS) { 
         int load_y = global_y - RADIUS; // riga precedente
         if (load_y >= 0 && global_x < width) // Check bounds
@@ -73,6 +86,12 @@ __global__ void gol_step_shared(u8* src, u8* dst, int width, int height) {
     // Halo Inferiore
     // ultima riga del blocco -> mi serve la prima del blocco dopo
     // o è riga con tutti 0 di zero-padding
+    /*
+        Ottimizzazione buonina => solo i thread che accedono all'ultima riga del blocco eseguono questa istruzione ad indirizzi contigui (coalesced):
+        con blocchi 16x16 => 16 thread (metà warp) => 16 byte.
+        In questo modo solo 16 dei 32 byte richiesti saranno utilizzati.
+        Ma comunque il dato sarà già presente per il blocco che detiene quella riga in L2 (più veloce della DRAM)
+    */
     if (local_y >= blockDim.y - RADIUS) {
         int load_y = global_y + RADIUS;
         if (load_y < height && global_x < width)
@@ -143,7 +162,7 @@ __global__ void gol_step_shared(u8* src, u8* dst, int width, int height) {
     u8 cell_value = tile[shared_y][shared_x];
     neighbors_alive -= cell_value; // Rimuovo self
 
-    // Aggiornamento della
+    // Aggiornamento della griglia finale
     dst[global_idx] = (neighbors_alive == 3) || (cell_value && (neighbors_alive == 2));
 }
 
