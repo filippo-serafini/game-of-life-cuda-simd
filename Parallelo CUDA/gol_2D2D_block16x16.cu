@@ -163,9 +163,6 @@ int main(int argc, char** argv) {
         CHECK(cudaGetLastError());
         CHECK(cudaDeviceSynchronize());
 
-        // traferisco la griglia GPU -> CPU
-        CHECK(cudaMemcpy(h_board, dst, total_bytes, cudaMemcpyDeviceToHost)); 
-
         // Swap buffers
         u8* tmp = src;
         src = dst;
