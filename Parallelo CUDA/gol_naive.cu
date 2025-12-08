@@ -51,11 +51,23 @@ __global__ void gol_step_naive(u8* src, u8* dst, int width, int height, int RADI
     dst[cell_index_y * width + cell_index_x] = cell_result;
 }
 
-// host helper
-void random_board(u8* board, int width, int height, float alive_prob = 0.2f) {
-    for (int y = 0; y < height; ++y)
-        for (int x = 0; x < width; ++x)
-            board[y * width + x] = (float(rand()) / RAND_MAX) < alive_prob ? 1 : 0;
+// Inizializza la griglia con valori 0 o 1 in modo deterministico
+void init_random_reproducible(u8* grid, int width, int height, unsigned int seed) {
+    
+    // Probabilità che sia 0 o 1
+    float probability = 0.5;
+    // Seed riproducibile
+    srand(seed);
+
+    int total_cells = width * height;
+
+    for (int i = 0; i < total_cells; ++i) {
+        // Genera un float tra 0.0 e 1.0
+        float r = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+        
+        // Se r è minore della probabilità (es. 0.5), la cella è viva (1), altrimenti morta (0)
+        grid[i] = (r < probability) ? 1 : 0;
+    }
 }
 
 // Inizializza la griglia con un Glider usando char* e una dimensione "padded"
@@ -86,7 +98,7 @@ int main(int argc, char** argv) {
     u8* h_board = (u8*)malloc(bytes); // host board allocation
     srand((unsigned)time(NULL));
     //random_board(h_board, width, height, 0.15f);
-    initialize_glider(h_board, width);
+    init_random_reproducible(h_board, width, height, 42);
 
     // alloca memoria device
     u8 *d_a, *d_b;
@@ -102,14 +114,6 @@ int main(int argc, char** argv) {
     u8* src = d_a;
     u8* dst = d_b;
 
-    // Stampa della griglia iniziale
-    for (int row = 0; row < width; ++row) {
-        for (int col = 0; col < width; ++col)
-            putchar(h_board[row * width + col] ? '#' : '.');
-            putchar('\n');
-    }
-    putchar('\n');
-    
     // Kernel execution
     for (int s = 0; s < steps; ++s) {
         gol_step_naive<<<dimGrid, dimBlock>>>(src, dst, width, height, radius);
@@ -118,14 +122,6 @@ int main(int argc, char** argv) {
 
         // traferisco la griglia GPU -> CPU
         CHECK(cudaMemcpy(h_board, dst, bytes, cudaMemcpyDeviceToHost)); 
-
-        // Stampa della griglia
-        for (int row = 0; row < width; ++row) {
-            for (int col = 0; col < width; ++col)
-                putchar(h_board[row * width + col] ? '#' : '.');
-            putchar('\n');
-        }
-        putchar('\n');
 
         // Swap buffers
         u8* tmp = src;
