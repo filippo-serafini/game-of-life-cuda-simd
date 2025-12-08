@@ -127,7 +127,6 @@ int main(int argc, char** argv) {
         u8* tmp = src;
         src = dst; 
         dst = tmp;
-
     }
 
     cudaFree(d_a);

@@ -163,9 +163,6 @@ int main(int argc, char** argv) {
         gol_step_2d2d<<<dimGrid, dimBlock>>>(src, dst, width, height, radius);
         CHECK(cudaGetLastError());
         CHECK(cudaDeviceSynchronize());
-
-        // traferisco la griglia GPU -> CPU
-        CHECK(cudaMemcpy(h_board, dst, total_bytes, cudaMemcpyDeviceToHost)); 
         
         // Swap buffers
         u8* tmp = src;

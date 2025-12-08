@@ -166,13 +166,6 @@ __global__ void gol_step_shared(u8* src, u8* dst, int width, int height) {
     dst[global_idx] = (neighbors_alive == 3) || (cell_value && (neighbors_alive == 2));
 }
 
-// host helper
-void random_board(u8* board, int width, int height, float alive_prob = 0.2f) {
-    for (int y = 0; y < height; ++y)
-        for (int x = 0; x < width; ++x)
-            board[y * width + x] = (float(rand()) / RAND_MAX) < alive_prob ? 1 : 0;
-}
-
 // Inizializza la griglia con valori 0 o 1 in modo deterministico
 void init_random_reproducible(u8* grid, int width, int height, unsigned int seed) {
     
