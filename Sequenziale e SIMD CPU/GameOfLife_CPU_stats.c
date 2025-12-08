@@ -15,6 +15,7 @@
 
 // --- Costanti ---
 #define LOGIC_SIZE 2048       // Dimensione effettiva della griglia N x N
+#define generations 15       // Numero di generazioni da simulare
 #define PADDED_SIZE (LOGIC_SIZE + 2) // N+2 x N+2 con zero-padding
 #define ALIGNMENT 16        // Allineamento richiesto da SSE
 
@@ -250,7 +251,7 @@ static void update_sequential(char* curr_grid, char* next_grid){
 
 // --- Main Program ---
 int main() {
-    printf("Game of Life (%dx%d) C con SSE SIMD\n", LOGIC_SIZE, LOGIC_SIZE);
+    printf("Game of Life (%dx%d) %d-generazioni C con SSE SIMD\n", LOGIC_SIZE, LOGIC_SIZE, generations);
 
     //varibili per tempo sequenziale
     double time_seq_start, time_seq_end, time_seq;
@@ -264,8 +265,6 @@ int main() {
     LARGE_INTEGER frequency_win;
     QueryPerformanceFrequency(&frequency_win);
 #endif
-
-    int generations = 15;
 
     // --------------------------------------- SEQUENZIALE ---------------------------------------
 

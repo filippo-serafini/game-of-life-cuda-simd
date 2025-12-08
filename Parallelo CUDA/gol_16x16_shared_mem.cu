@@ -18,12 +18,16 @@ using u8 = unsigned char;
 #define BLOCK_DIM_Y 16
 #define RADIUS 1
 
+// Dichiarazioni in constant memory (scope globale)
+__constant__ int d_width;
+__constant__ int d_height;
+
 // La tile in Shared Memory deve contenere il blocco + i bordi
 // Dimensione Shared: (16 + 2) x (16 + 2) = 18x18
 #define SM_W (BLOCK_DIM_X + 2 * RADIUS)
 #define SM_H (BLOCK_DIM_Y + 2 * RADIUS)
 
-__global__ void gol_step_shared(u8* src, u8* dst, int width, int height) {
+__global__ void gol_step_shared(u8* src, u8* dst) {
     
     // Allocazione Shared Memory STATICA
     __shared__ u8 tile[SM_H][SM_W];
@@ -31,7 +35,7 @@ __global__ void gol_step_shared(u8* src, u8* dst, int width, int height) {
     // Coordinate globali del thread (per leggere da Global Memory)
     int global_x = blockIdx.x * blockDim.x + threadIdx.x;
     int global_y = blockIdx.y * blockDim.y + threadIdx.y;
-    int global_idx = global_y * width + global_x; // row major
+    int global_idx = global_y * d_width + global_x; // row major
 
     // Coordinate locali nel blocco (0..15)
     int local_x = threadIdx.x;
@@ -55,8 +59,8 @@ __global__ void gol_step_shared(u8* src, u8* dst, int width, int height) {
        una sola transazione da 32
     */
     // Controllo bounds globali
-    if (global_x < width && global_y < height) {
-        tile[shared_y][shared_x] = src[global_y * width + global_x];
+    if (global_x < d_width && global_y < d_height) {
+        tile[shared_y][shared_x] = src[global_y * d_width + global_x];
     } else {
         tile[shared_y][shared_x] = 0; // Padding esterno nullo
     }
@@ -77,8 +81,8 @@ __global__ void gol_step_shared(u8* src, u8* dst, int width, int height) {
     */
     if (local_y < RADIUS) { 
         int load_y = global_y - RADIUS; // riga precedente
-        if (load_y >= 0 && global_x < width) // Check bounds
-            tile[shared_y - RADIUS][shared_x] = src[load_y * width + global_x];
+        if (load_y >= 0 && global_x < d_width) // Check bounds
+            tile[shared_y - RADIUS][shared_x] = src[load_y * d_width + global_x];
         else
             tile[shared_y - RADIUS][shared_x] = 0;
     }
@@ -94,8 +98,8 @@ __global__ void gol_step_shared(u8* src, u8* dst, int width, int height) {
     */
     if (local_y >= blockDim.y - RADIUS) {
         int load_y = global_y + RADIUS;
-        if (load_y < height && global_x < width)
-            tile[shared_y + RADIUS][shared_x] = src[load_y * width + global_x];
+        if (load_y < d_height && global_x < d_width)
+            tile[shared_y + RADIUS][shared_x] = src[load_y * d_width + global_x];
         else
             tile[shared_y + RADIUS][shared_x] = 0;
     }
@@ -105,8 +109,8 @@ __global__ void gol_step_shared(u8* src, u8* dst, int width, int height) {
     // o è colonna con tutti 0 di zero-padding
     if (local_x < RADIUS) {
         int load_x = global_x - RADIUS;
-        if (load_x >= 0 && global_y < height)
-            tile[shared_y][shared_x - RADIUS] = src[global_y * width + load_x];
+        if (load_x >= 0 && global_y < d_height)
+            tile[shared_y][shared_x - RADIUS] = src[global_y * d_width + load_x];
         else
             tile[shared_y][shared_x - RADIUS] = 0;
     }
@@ -116,8 +120,8 @@ __global__ void gol_step_shared(u8* src, u8* dst, int width, int height) {
     // o è colonna con tutti 0 di zero-padding
     if (local_x >= blockDim.x - RADIUS) {
         int load_x = global_x + RADIUS;
-        if (load_x < width && global_y < height)
-            tile[shared_y][shared_x + RADIUS] = src[global_y * width + load_x];
+        if (load_x < d_width && global_y < d_height)
+            tile[shared_y][shared_x + RADIUS] = src[global_y * d_width + load_x];
         else
             tile[shared_y][shared_x + RADIUS] = 0;
     }
@@ -125,19 +129,19 @@ __global__ void gol_step_shared(u8* src, u8* dst, int width, int height) {
     // Halo Angoli per celle angolari del blocco
     if (local_x < RADIUS && local_y < RADIUS) { // Top-Left
         int load_y = global_y - RADIUS; int load_x = global_x - RADIUS;
-        tile[shared_y - RADIUS][shared_x - RADIUS] = (load_x >= 0 && load_y >= 0) ? src[load_y * width + load_x] : 0;
+        tile[shared_y - RADIUS][shared_x - RADIUS] = (load_x >= 0 && load_y >= 0) ? src[load_y * d_width + load_x] : 0;
     }
     if (local_x >= blockDim.x - RADIUS && local_y < RADIUS) { // Top-Right
         int load_y = global_y - RADIUS; int load_x = global_x + RADIUS;
-        tile[shared_y - RADIUS][shared_x + RADIUS] = (load_x < width && load_y >= 0) ? src[load_y * width + load_x] : 0;
+        tile[shared_y - RADIUS][shared_x + RADIUS] = (load_x < d_width && load_y >= 0) ? src[load_y * d_width + load_x] : 0;
     }
     if (local_x < RADIUS && local_y >= blockDim.y - RADIUS) { // Bottom-Left
         int load_y = global_y + RADIUS; int load_x = global_x - RADIUS;
-        tile[shared_y + RADIUS][shared_x - RADIUS] = (load_x >= 0 && load_y < height) ? src[load_y * width + load_x] : 0;
+        tile[shared_y + RADIUS][shared_x - RADIUS] = (load_x >= 0 && load_y < d_height) ? src[load_y * d_width + load_x] : 0;
     }
     if (local_x >= blockDim.x - RADIUS && local_y >= blockDim.y - RADIUS) { // Bottom-Right
         int load_y = global_y + RADIUS; int load_x = global_x + RADIUS;
-        tile[shared_y + RADIUS][shared_x + RADIUS] = (load_x < width && load_y < height) ? src[load_y * width + load_x] : 0;
+        tile[shared_y + RADIUS][shared_x + RADIUS] = (load_x < d_width && load_y < d_height) ? src[load_y * d_width + load_x] : 0;
     }
 
     // BARRIERA DI SINCRONIZZAZIONE
@@ -147,7 +151,7 @@ __global__ void gol_step_shared(u8* src, u8* dst, int width, int height) {
     // --- FASE 2: CALCOLO (Leggendo SOLO da Shared Memory) ---
     
     // Se siamo fuori dalla griglia reale, usciamo (dopo il sync, o i thread attivi aspetterebbero all'infinito quelli usciti prima)
-    if (global_x >= width || global_y >= height) return;
+    if (global_x >= d_width || global_y >= d_height) return;
 
     int neighbors_alive = 0;
     
@@ -205,19 +209,22 @@ int main(int argc, char** argv) {
     CHECK(cudaMalloc(&d_b, total_bytes));
     CHECK(cudaMemcpy(d_a, h_board, total_bytes, cudaMemcpyHostToDevice));
 
+    // Copia width e height in constant memory
+    CHECK(cudaMemcpyToSymbol(d_width, &width, sizeof(int)));
+    CHECK(cudaMemcpyToSymbol(d_height, &height, sizeof(int)));
+
     // DIMENSIONE DEL BLOCCO: 2D
     // Fare test per capire configurazione migliore e verificare 
     // occupancy tramite nsight compute
 
     // Dimensioni dei blocchi (Numero di thread) 
-    const int BLOCK_SIZE_X = 16;
-    const int BLOCK_SIZE_Y = 16;
+    // uso le define in cima al file
     /*
     *   256 threads => 8 warp per blocco
     */
     
     // --- DIMENSIONAMENTO DI GRIGLIA E BLOCCHI ---
-    dim3 dimBlock(BLOCK_SIZE_X, BLOCK_SIZE_Y);
+    dim3 dimBlock(BLOCK_DIM_X, BLOCK_DIM_Y);
     // Dimensione della griglia 2D calcolata in relazione a:
     //  1. dimensione della griglia (w, h)
     //  2. dimensione dei blocchi (# th)
@@ -231,7 +238,7 @@ int main(int argc, char** argv) {
 
     // Kernel execution
     for (int s = 0; s < steps; ++s) {
-        gol_step_shared<<<dimGrid, dimBlock>>>(src, dst, width, height);
+        gol_step_shared<<<dimGrid, dimBlock>>>(src, dst);
         CHECK(cudaGetLastError());
         CHECK(cudaDeviceSynchronize());
 
