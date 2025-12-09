@@ -95,3 +95,8 @@ Speed-up generazioni = 3.50
 Ideal Parallelism (P) = 16 (128 bits / 8 bits)
 Efficiency totale = 0.151696 (o 15.17%)
 Efficiency generazioni = 0.218459 (o 21.85%)
+
+------------------------------- 0 --------------------------------- 0 -----------------------
+Risultati CUDA kernel<<16,16>> con per 100-generazioni
+Tempo di esecuzione totale = 6.405 secondi
+Tempo di esecuzione generazioni = 6.057 secondi

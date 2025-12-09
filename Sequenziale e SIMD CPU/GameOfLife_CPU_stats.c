@@ -153,19 +153,25 @@ void update_with_sse(char* current_grid, char* next_grid) {
             neigh_alive = _mm_add_epi8(neigh_alive, cur_right);
             neigh_alive = _mm_add_epi8(neigh_alive, next_right);
 
-            // Applicazione delle Regole: Nuovo Stato = (N=3) OR (Stato Attuale AND N=2)
+            // Regola 1: Nuova vita o Sopravvivenza (N=3): 
+            // Crea una maschera dove i byte sono 0xFF (vero) se il conteggio dei vicini è 3.
             __m128i is_three = _mm_cmpeq_epi8(neigh_alive, three_vec);
+            // Regola 2: Sopravvivenza (N=2): 
+            // Crea una maschera dove i byte sono 0xFF se il conteggio è 2.
             __m128i is_two = _mm_cmpeq_epi8(neigh_alive, two_vec);
-
+            // Combinazione delle Regole: La maschera dello stato futuro è: 
+            // (N=3) OR (Stato Attuale AND N=2). La cella attuale è contenuta nel vettore centrale della riga corrente (cur_mid).
             __m128i new_state_mask = _mm_or_si128(
                 is_three,
                 _mm_and_si128(cur_mid, is_two)
             );
 
-            // Conversione in binario dello stato calcolato (0 o 1)
+            // Conversione in Binario: Le maschere di confronto contengono 0xFF per "vero" e 0x00 per "falso".
+            // Per ottenere lo stato finale come 1 o 0, si esegue un AND logico 
+            // con il vettore costante one_vec (contenente 0x01 per ogni byte):
             __m128i next_cells = _mm_and_si128(new_state_mask, one_vec);
 
-            // 5. Memorizzazione del nuovo stato
+            // Memorizzazione del nuovo stato della griglia di gioco
             char* target_ptr_next = next_grid + i * PADDED_SIZE + j;
             _mm_storeu_si128((__m128i*)target_ptr_next, next_cells);
         }
