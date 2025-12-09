@@ -16,6 +16,27 @@
 #include <ctime>
 #include <cmath>
 
+// Aggiungi la libreria time.h per il timing POSIX
+#if defined(__APPLE__) || defined(__linux__)
+#include <time.h>
+#else
+// Mantieni windows.h solo per Windows
+#include <windows.h>
+#endif
+
+// --- Funzioni di Timing Portatili ---
+
+// Struttura e funzione per il timing in ambienti POSIX (Linux/macOS)
+#if defined(__APPLE__) || defined(__linux__)
+static double get_time_posix() {
+    struct timespec t;
+    // Usa CLOCK_MONOTONIC per misurare il tempo trascorso
+    clock_gettime(CLOCK_MONOTONIC, &t);
+    // Ritorna il tempo in secondi
+    return (double)t.tv_sec + (double)t.tv_nsec / 1000000000.0;
+}
+#endif
+
 using u8 = unsigned char;
 
 #define CHECK(call) do { \
@@ -235,12 +256,12 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
 // -------------------- MAIN --------------------
 int main(int argc, char** argv) {
     // Parametri logici
-    const int width = 2048;
-    const int height = 2048;
-    const int SCALE = 4; // pixel per cell (display size = width*SCALE)
+    const int width = 8190;
+    const int height = 8190;
+    const int SCALE = 1; // pixel per cell (display size = width*SCALE)
     const int radius = 1;
 
-    int steps = 0;
+    int steps = 0;               // contatore step eseguiti
 
     const int displayWidth = width * SCALE;
     const int displayHeight = height * SCALE;
@@ -451,10 +472,36 @@ int main(int argc, char** argv) {
 
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
+    // -------------------- Main loop timing --------------------
+    double time_start, time_end, time_tot;
+    double time_start_step, time_end_step, time_step;
+    // Variabili Windows per i contatori ad alta risoluzione
+    #if defined(_WIN32)
+        LARGE_INTEGER frequency_win;
+        QueryPerformanceFrequency(&frequency_win);
+    #endif
+
+    // ISTANTE DI INIZIO MAIN LOOP
+    #if defined(__APPLE__) || defined(__linux__)
+        time_start = get_time_posix();
+    #else // Windows
+        LARGE_INTEGER start_win_tot;
+        QueryPerformanceCounter(&start_win_tot);
+        time_start = (double)start_win_tot.QuadPart;
+    #endif
+
     // -------------------- Main loop --------------------
-    while (!glfwWindowShouldClose(win)) { //&& steps < 100 per aggiungere un limite di step
+    while (!glfwWindowShouldClose(win) && steps < 1000) { //&& steps < N per aggiungere un limite di step
         glfwPollEvents();
 
+        // ISTANTE DI INIZIO SINGOLO STEP
+        #if defined(__APPLE__) || defined(__linux__)
+            time_start_step = get_time_posix();
+        #else // Windows
+            LARGE_INTEGER start_win_step;
+            QueryPerformanceCounter(&start_win_step);
+            time_start_step = (double)start_win_step.QuadPart;
+        #endif
         // 1) Step Gol
         if (!g_paused)
         {
@@ -490,6 +537,17 @@ int main(int argc, char** argv) {
         }
         CHECK(cudaDeviceSynchronize());
 
+        // ISTANTE FINALE SINGOLO STEP
+        #if defined(__APPLE__) || defined(__linux__)
+            time_end_step = get_time_posix();
+            time_step = time_end_step - time_start_step;
+        #else // Windows
+            LARGE_INTEGER end_win_step;
+            QueryPerformanceCounter(&end_win_step);
+            time_end_step = (double)end_win_step.QuadPart;
+            time_step = (time_end_step - time_start_step) / frequency_win.QuadPart;
+        #endif
+
         // 4) Unmap PBO
         CHECK(cudaGraphicsUnmapResources(1, &cuda_pbo, 0));
 
@@ -517,6 +575,17 @@ int main(int argc, char** argv) {
         glfwSwapBuffers(win);
     }
 
+    // ISTANTE FINALE MAIN LOOP
+    #if defined(__APPLE__) || defined(__linux__)
+        time_end = get_time_posix();
+        time_tot = time_end - time_start;
+    #else // Windows
+        LARGE_INTEGER end_win_tot;
+        QueryPerformanceCounter(&end_win_tot);
+        time_end = (double)end_win_tot.QuadPart;
+        time_tot = (time_end - time_start) / frequency_win.QuadPart;
+    #endif
+
     // -------------------- Cleanup --------------------
     CHECK(cudaGraphicsUnregisterResource(cuda_pbo));
     glDeleteBuffers(1, &pbo);
@@ -533,6 +602,10 @@ int main(int argc, char** argv) {
 
     glfwDestroyWindow(win);
     glfwTerminate();
+
+    printf("Simulation completed. Steps executed: %d\n", steps);
+    printf("Tempo di esecuzione totale: %f ms\n", time_tot * 1000);
+    printf("Tempo per singolo step (ultimo): %f ms\n", time_step * 1000);   
 
     return 0;
 }

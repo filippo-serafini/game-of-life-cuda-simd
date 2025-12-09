@@ -16,6 +16,27 @@
 #include <immintrin.h>
 #include <cstring>
 
+// Aggiungi la libreria time.h per il timing POSIX
+#if defined(__APPLE__) || defined(__linux__)
+#include <time.h>
+#else
+// Mantieni windows.h solo per Windows
+#include <windows.h>
+#endif
+
+// --- Funzioni di Timing Portatili ---
+
+// Struttura e funzione per il timing in ambienti POSIX (Linux/macOS)
+#if defined(__APPLE__) || defined(__linux__)
+static double get_time_posix() {
+    struct timespec t;
+    // Usa CLOCK_MONOTONIC per misurare il tempo trascorso
+    clock_gettime(CLOCK_MONOTONIC, &t);
+    // Ritorna il tempo in secondi
+    return (double)t.tv_sec + (double)t.tv_nsec / 1000000000.0;
+}
+#endif
+
 using u8 = unsigned char;
 
 #define CHECK(call) do { \
@@ -264,17 +285,27 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
 // ==================== MAIN ====================
 
 int main(int argc, char** argv) {
-    const int LOGIC_SIZE = 1024;  // Grid size (can be adjusted)
+    const int LOGIC_SIZE = 8192;  // Grid size (can be adjusted)
     const int PADDED_SIZE = LOGIC_SIZE + 2;  // Padding for SIMD
-    const int SCALE = 2;  // pixels per cell
+    const int SCALE = 1;  // pixels per cell
     const int displayWidth = LOGIC_SIZE * SCALE;
     const int displayHeight = LOGIC_SIZE * SCALE;
     const int WINDOW_WIDTH = 1280;
     const int WINDOW_HEIGHT = 720;
+    
+    int steps = 0;             // contatore step eseguiti
 
-    int steps = 0;
     g_display_w = displayWidth;
     g_display_h = displayHeight;
+
+    // Variabili per tempo
+    double time_start, time_end, time_tot;
+    double time_start_step, time_end_step, time_step; 
+    // Variabili Windows per i contatori ad alta risoluzione
+    #if defined(_WIN32)
+        LARGE_INTEGER frequency_win;
+        QueryPerformanceFrequency(&frequency_win);
+    #endif
 
     // ========== CPU HOST MEMORY ==========
     char* h_grid_a = aligned_malloc_grid(PADDED_SIZE);
@@ -460,8 +491,26 @@ int main(int argc, char** argv) {
     printf("Controls: LMB drag=pan, scroll=zoom, SPACE=pause, ESC=exit\n");
 
     // ========== MAIN LOOP ==========
-    while (!glfwWindowShouldClose(win)) { //&& steps < 100 per aggiungere un limite di step
+    // ISTANTE DI INIZIO MAIN LOOP
+    #if defined(__APPLE__) || defined(__linux__)
+        time_start = get_time_posix();
+    #else // Windows
+        LARGE_INTEGER start_win_tot;
+        QueryPerformanceCounter(&start_win_tot);
+        time_start = (double)start_win_tot.QuadPart;
+    #endif
+
+    while (!glfwWindowShouldClose(win) && steps < 1000) {
         glfwPollEvents();
+
+        // ISTANTE DI INIZIO SINGOLO STEP
+        #if defined(__APPLE__) || defined(__linux__)
+            time_start_step = get_time_posix();
+        #else // Windows
+            LARGE_INTEGER start_win_step;
+            QueryPerformanceCounter(&start_win_step);
+            time_start_step = (double)start_win_step.QuadPart;
+        #endif
 
         // 1) CPU SIMD Logic Update
         if (!g_paused) {
@@ -494,6 +543,17 @@ int main(int argc, char** argv) {
         }
         CHECK(cudaDeviceSynchronize());
 
+        // ISTANTE FINALE SINGOLO STEP
+        #if defined(__APPLE__) || defined(__linux__)
+            time_end_step = get_time_posix();
+            time_step = time_end_step - time_start_step;
+        #else // Windows
+            LARGE_INTEGER end_win_step;
+            QueryPerformanceCounter(&end_win_step);
+            time_end_step = (double)end_win_step.QuadPart;
+            time_step = (time_end_step - time_start_step) / frequency_win.QuadPart;
+        #endif
+
         // 5) Unmap PBO
         CHECK(cudaGraphicsUnmapResources(1, &cuda_pbo, 0));
 
@@ -519,6 +579,16 @@ int main(int argc, char** argv) {
 
         glfwSwapBuffers(win);
     }
+    // ISTANTE FINALE MAIN LOOP
+    #if defined(__APPLE__) || defined(__linux__)
+        time_end = get_time_posix();
+        time_tot = time_end - time_start;
+    #else // Windows
+        LARGE_INTEGER end_win_tot;
+        QueryPerformanceCounter(&end_win_tot);
+        time_end = (double)end_win_tot.QuadPart;
+        time_tot = (time_end - time_start) / frequency_win.QuadPart;
+    #endif
 
     // ========== CLEANUP ==========
     CHECK(cudaGraphicsUnregisterResource(cuda_pbo));
@@ -536,5 +606,8 @@ int main(int argc, char** argv) {
     glfwTerminate();
 
     printf("Simulation completed. Steps executed: %d\n", steps);
+    printf("Tempo di esecuzione main loop: %f ms\n", time_tot * 1000);
+    printf("Tempo di esecuzione singolo step (ultimo): %f ms\n", time_step * 1000);
+
     return 0;
 }
