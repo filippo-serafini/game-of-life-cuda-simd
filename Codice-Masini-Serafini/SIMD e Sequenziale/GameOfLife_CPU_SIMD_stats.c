@@ -14,10 +14,10 @@
 #endif
 
 // --- Costanti ---
-#define LOGIC_SIZE 2048       // Dimensione effettiva della griglia N x N
-#define generations 15       // Numero di generazioni da simulare
+#define LOGIC_SIZE 2048              // Dimensione effettiva della griglia N x N
+#define generations 15               // Numero di generazioni da simulare
 #define PADDED_SIZE (LOGIC_SIZE + 2) // N+2 x N+2 con zero-padding
-#define ALIGNMENT 16        // Allineamento richiesto da SSE
+#define ALIGNMENT 16                 // Allineamento richiesto da SSE
 
 // --- Funzioni di Timing Portatili ---
 
@@ -64,29 +64,12 @@ void aligned_free_grid(char* ptr) {
     #endif
 }
 
-// --- Funzioni di Inizializzazione e Stampa (senza modifiche) ---
-
-// Inizializza la griglia con un Glider (Versione SIMD/Padded)
-void initialize_glider(char* grid_data) {
-    int r = 10;
-    int c = 10;
-
-    // Griglia[riga * PADDED_SIZE + colonna]
-    grid_data[r * PADDED_SIZE + c + 1] = 1;
-    grid_data[(r + 1) * PADDED_SIZE + c + 2] = 1;
-    grid_data[(r + 2) * PADDED_SIZE + c] = 1;
-    grid_data[(r + 2) * PADDED_SIZE + c + 1] = 1;
-    grid_data[(r + 2) * PADDED_SIZE + c + 2] = 1;
-}
+// --- Funzioni di Inizializzazione e Stampa ---
 
 // Inizializza la griglia con valori 0 o 1 in modo deterministico (Versione SIMD/Padded)
-void init_random_reproducible(char* grid, int width, int height, unsigned int seed) {
-    // Azzeramento di TUTTA la griglia (con padding) 
-    // gia' fatto nella malloc allineata
+void init_random_reproducible(char* grid, unsigned int seed) {
     
-    // Probabilità che sia 0 o 1
     float probability = 0.5;
-    // Seed riproducibile
     srand(seed);
 
     // Inizializza solo la zona logica (1..LOGIC_SIZE) saltando il padding
@@ -94,22 +77,11 @@ void init_random_reproducible(char* grid, int width, int height, unsigned int se
         for (int j = 1; j <= LOGIC_SIZE; ++j) {
             // Genera un float tra 0.0 e 1.0
             float r = (float)(rand()) / (float)(RAND_MAX);
+
             // Se r è minore della probabilità (es. 0.5), la cella è viva (1), altrimenti morta (0)
             grid[i * PADDED_SIZE + j] = (r < probability) ? 1 : 0;
         }
     }
-}
-
-// Stampa la griglia (solo la parte LOGIC_SIZE x LOGIC_SIZE)
-void print_grid(const char* grid) {
-    printf("----------------------------------------------------------------------------------------------------------------------------------\n");
-    for (int i = 1; i <= LOGIC_SIZE; ++i) {
-        for (int j = 1; j <= LOGIC_SIZE; ++j) {
-            printf("%c ", grid[i * PADDED_SIZE + j] ? '#' : '.');
-        }
-        printf("\n");
-    }
-    printf("----------------------------------------------------------------------------------------------------------------------------------\n");
 }
 
 // --- Funzione Principale di Calcolo con SSE (senza modifiche) ---
@@ -178,60 +150,13 @@ void update_with_sse(char* current_grid, char* next_grid) {
     }
 }
 
-// -------------------------------------------- Versione Sequenziale (senza modifiche) --------------------------------------------
-
-/* Alloca una matrice (righe x cols) contigua */
-static char* allocate_grid() {
-
-    char *g = malloc((size_t)LOGIC_SIZE * LOGIC_SIZE * sizeof(char));
-    if (!g) {
-        fprintf(stderr, "Errore: allocazione memoria fallita\n");
-        exit(EXIT_FAILURE);
-    }
-    return g;
-}
-
-// Inizializza Glider (Versione Sequenziale)
-void initialize_glider_sequential(char* grid_data) {
-    memset(grid_data, 0, LOGIC_SIZE * LOGIC_SIZE);
-    int r = 10; int c = 10;
-    // Indici diretti senza offset padding
-    grid_data[r * LOGIC_SIZE + c] = 1;
-    grid_data[(r + 1) * LOGIC_SIZE + c + 1] = 1;
-    grid_data[(r + 2) * LOGIC_SIZE + c - 1] = 1;
-    grid_data[(r + 2) * LOGIC_SIZE + c] = 1;
-    grid_data[(r + 2) * LOGIC_SIZE + c + 1] = 1;
-}
-
-// Inizializza la griglia con valori 0 o 1 in modo deterministico (Versione Sequenziale)
-void init_random_reproducible_sequential(char* grid, int width, int height, unsigned int seed) {
-    
-    // Probabilità che sia 0 o 1
-    float probability = 0.5;
-    // Seed riproducibile
-    srand(seed);
-
-    int total_cells = width * height;
-
-    for (int i = 0; i < total_cells; ++i) {
-        // Genera un float tra 0.0 e 1.0
-        float r = (float)(rand()) / (float)(RAND_MAX);
-        
-        // Se r è minore della probabilità (es. 0.5), la cella è viva (1), altrimenti morta (0)
-        grid[i] = (r < probability) ? 1 : 0;
-    }
-}
+// -------------------------------------------- Versione Sequenziale --------------------------------------------
 
 // Funzione di aggiornamento sequenziale
 static void update_sequential(char* curr_grid, char* next_grid){
-
-    // La versione sequenziale deve usare gli indici della griglia NON-PADDED per funzionare correttamente
-    // Poiché il tuo codice sequenziale usa gli indici PADDED (idx = row_offset + col) e
-    // alloca la memoria PADDED solo con la malloc allineata (che poi liberi),
-    // rendiamo la versione sequenziale consistente con la struttura PADDED per semplificare.
-
+    // La versione sequenziale e' consistente con la struttura della griglia con zero-padding definita nella relazione
     for (int row = 1; row <= LOGIC_SIZE; ++row) {
-        int row_offset = row * PADDED_SIZE;
+        int row_offset = row * PADDED_SIZE; // Offset della riga corrente
 
         for (int col = 1; col <= LOGIC_SIZE; ++col) {
 
@@ -255,7 +180,6 @@ static void update_sequential(char* curr_grid, char* next_grid){
     }
 }
 
-// --- Main Program ---
 int main() {
     printf("Game of Life (%dx%d) %d-generazioni C con SSE SIMD\n", LOGIC_SIZE, LOGIC_SIZE, generations);
 
@@ -283,12 +207,12 @@ int main() {
         time_seq_start_tot = (double)start_win_seq_tot.QuadPart;
     #endif
 
-    // Alloca e inizializza le due griglie allineate (usiamo le funzioni allineate anche per la seq
-    // per coerenza e per usare update_sequential con gli indici PADDED)
+    // Alloca e inizializza le due griglie allineate (usiamo le funzioni allineate anche per la versione
+    // sequenziale per coerenza e per usare update_sequential con gli indici PADDED)
     char* grid_a = aligned_malloc_grid();
     char* grid_b = aligned_malloc_grid();
 
-    init_random_reproducible_sequential(grid_a, LOGIC_SIZE, LOGIC_SIZE, 42);
+    init_random_reproducible(grid_a, 42);
 
     char* current = grid_a;
     char* next = grid_b;
@@ -356,7 +280,7 @@ int main() {
         return 1;
     }
 
-    init_random_reproducible(grid_a, LOGIC_SIZE, LOGIC_SIZE, 42);
+    init_random_reproducible(grid_a, 42);
 
     current = grid_a;
     next = grid_b;
