@@ -66,7 +66,7 @@ void aligned_free_grid(char* ptr) {
 
 // --- Funzioni di Inizializzazione e Stampa ---
 
-// Inizializza la griglia con valori 0 o 1 in modo deterministico (Versione SIMD/Padded)
+// Inizializza la griglia con valori 0 o 1 in modo deterministico
 void init_random_reproducible(char* grid, unsigned int seed) {
     
     float probability = 0.5;
