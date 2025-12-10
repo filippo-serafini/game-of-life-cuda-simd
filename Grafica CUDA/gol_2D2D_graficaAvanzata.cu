@@ -256,9 +256,9 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
 // -------------------- MAIN --------------------
 int main(int argc, char** argv) {
     // Parametri logici
-    const int width = 8190;
-    const int height = 8190;
-    const int SCALE = 1; // pixel per cell (display size = width*SCALE)
+    const int width = 2048;
+    const int height = 2048;
+    const int SCALE = 4; // pixel per cell (display size = width*SCALE)
     const int radius = 1;
 
     int steps = 0;               // contatore step eseguiti
@@ -424,10 +424,12 @@ int main(int argc, char** argv) {
             return -1;
         }
     }
+    // non piu' necessari dopo il link -> risparmia memoria GPU
     glDeleteShader(vs);
     glDeleteShader(fs);
 
     // Quad (two triangles) NDC + texcoords
+    // serve applicare zoom/pan via shader
     float quadVertices[] = {
         // pos      // tex
         -1.0f, -1.0f,  0.0f, 0.0f,
@@ -502,7 +504,7 @@ int main(int argc, char** argv) {
             QueryPerformanceCounter(&start_win_step);
             time_start_step = (double)start_win_step.QuadPart;
         #endif
-        // 1) Step Gol
+        // 1) Calcolo nuova generazione GoL
         if (!g_paused)
         {
             gol_step_2d2d<<<dimGridGame, dimBlockGame>>>(src, dst, width, height, radius);
@@ -521,7 +523,7 @@ int main(int argc, char** argv) {
             steps++;
         }
 
-        // 2) Map PBO and get pointer
+        // 2) Mappa PBO e ottiene puntatore -> utilizzabile da CUDA
         CHECK(cudaGraphicsMapResources(1, &cuda_pbo, 0));
         uchar4* pbo_dev_ptr = nullptr;
         size_t mapped_size = 0;
@@ -548,7 +550,7 @@ int main(int argc, char** argv) {
             time_step = (time_end_step - time_start_step) / frequency_win.QuadPart;
         #endif
 
-        // 4) Unmap PBO
+        // 4) Unmap PBO -> utilizzabile da OpenGL
         CHECK(cudaGraphicsUnmapResources(1, &cuda_pbo, 0));
 
         // 5) Upload PBO -> Texture
@@ -562,7 +564,7 @@ int main(int argc, char** argv) {
         // 6) Draw fullscreen quad with pan/zoom
         glClear(GL_COLOR_BUFFER_BIT);
         glUseProgram(program);
-        // Set pan and zoom uniforms
+        // Setta gli uniform di pan e lo zoom
         glUniform2f(loc_pan, g_pan_x, g_pan_y);
         glUniform1f(loc_zoom, g_zoom);
         glActiveTexture(GL_TEXTURE0);

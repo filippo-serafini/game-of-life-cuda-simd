@@ -285,9 +285,9 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
 // ==================== MAIN ====================
 
 int main(int argc, char** argv) {
-    const int LOGIC_SIZE = 8192;  // Grid size (can be adjusted)
+    const int LOGIC_SIZE = 2048;  // Grid size (can be adjusted)
     const int PADDED_SIZE = LOGIC_SIZE + 2;  // Padding for SIMD
-    const int SCALE = 1;  // pixels per cell
+    const int SCALE = 4;  // pixels per cell
     const int displayWidth = LOGIC_SIZE * SCALE;
     const int displayHeight = LOGIC_SIZE * SCALE;
     const int WINDOW_WIDTH = 1280;
