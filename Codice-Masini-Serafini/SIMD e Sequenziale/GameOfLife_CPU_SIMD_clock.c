@@ -21,7 +21,7 @@
 // --- Funzioni per Lettura dei Clock della CPU ---
 
 // Lettura diretta del Time Stamp Counter (RDTSC)
-// Ritorna il numero di clock della CPU dal boot
+// Restituisce il numero di clock della CPU dal boot
 static inline uint64_t rdtsc(void) {
     return __rdtsc();
 }
@@ -35,8 +35,7 @@ static uint64_t get_cpu_frequency(void) {
         QueryPerformanceFrequency(&freq);
         return freq.QuadPart;
     #else
-        // Su Linux/macOS, leggiamo /proc/cpuinfo o usiamo valori predefiniti
-        // Questo è un approccio semplificato; in produzione, si userebbe /proc/cpuinfo
+        // Estrazione della frequenza da /proc/cpuinfo su Linux
         FILE *fp = fopen("/proc/cpuinfo", "r");
         if (!fp) {
             return 2400000000ULL; // Default fallback: 2.4 GHz
@@ -76,7 +75,7 @@ char* aligned_malloc_grid() {
     }
     return ptr;
 }
-
+// Funzione per liberare la memoria allocata con aligned_malloc_grid
 void aligned_free_grid(char* ptr) {
     #if defined(_WIN32)
         _aligned_free(ptr);
@@ -340,12 +339,6 @@ int main() {
     printf("\n[EFFICIENZA]\n");
     printf("  Efficienza totale: %.2f%%\n", efficiency_time_tot);
     printf("  Efficienza generazioni: %.2f%%\n", efficiency_time);
-
-    printf("\n[DETTAGLI CLOCK]\n");
-    printf("  Rapporto clock (SIMD vs SEQ generazioni): %.2f%%\n", 
-           (double)clk_simd / (double)clk_seq * 100.0);
-    printf("  Riduzione clock: %.2f%%\n", 
-           100.0 - (double)clk_simd / (double)clk_seq * 100.0);
 
     printf("\n================================================\n");
 
