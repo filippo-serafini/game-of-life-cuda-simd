@@ -1,8 +1,16 @@
+/*
+*       VERSIONE CUDA GRIGLIA 2D BLOCCO 2D (16x16) E SHARED MEMORY
+*       Max grid y-dimension: 65.535
+*       Max thread per block: 1024
+*       Griglia di gioco: 1024x1024
+*/
+
 #include <cstdio>
 #include <cstdlib>
 #include <cuda_runtime.h>
 #include <ctime>
 
+// Alias unsigned char
 using u8 = unsigned char;
 
 #define CHECK(call) do { \
@@ -19,154 +27,177 @@ using u8 = unsigned char;
 #define RADIUS 1
 
 // Dichiarazioni in constant memory (scope globale)
-__constant__ int d_width;
-__constant__ int d_height;
+__constant__ const int dev_width;
+__constant__ const int dev_height;
 
-// La tile in Shared Memory deve contenere il blocco + i bordi
+// La tile in Shared Memory deve contenere il blocco + le righe e colonne
+// di zero padding o appartenenti ad altri blocchi per le celle sui bordi.
 // Dimensione Shared: (16 + 2) x (16 + 2) = 18x18
 #define SM_W (BLOCK_DIM_X + 2 * RADIUS)
 #define SM_H (BLOCK_DIM_Y + 2 * RADIUS)
 
 __global__ void gol_step_shared(u8* src, u8* dst) {
     
-    // Allocazione Shared Memory STATICA
+    // Allocazione statica Shared Memory 
     __shared__ u8 tile[SM_H][SM_W];
 
-    // Coordinate globali del thread (per leggere da Global Memory)
+    // COORDINATE GLOBALI del thread (per leggere da Global Memory)
     int global_x = blockIdx.x * blockDim.x + threadIdx.x;
     int global_y = blockIdx.y * blockDim.y + threadIdx.y;
-    int global_idx = global_y * d_width + global_x; // row major
+    int global_idx = global_y * dev_width + global_x;
 
-    // Coordinate locali nel blocco (0..15)
+    // COORDINATE LOCALI nel BLOCCO (0..15)
     int local_x = threadIdx.x;
     int local_y = threadIdx.y;
 
-    // Coordinate locali nella Shared Memory
+    // COORDINATE LOCALI nella SHARED MEMORY
     // Aggiungo RADIUS per considerare in posizione 0 e
-    // blockDim.y+1 le righe/colonne di padding (zeri)
-    // -> riga 0 local = riga 1 shared
+    // blockDim.y + 1 le righe/colonne di padding (zeri) o di altri blocchi.
+    // riga 0 local <=> riga 1 shared
     int shared_x = local_x + RADIUS;
     int shared_y = local_y + RADIUS;
 
-    // --- CARICAMENTO IN SHARED MEMORY ---
-    
-    // Caricamento della cella centrale (propria del thread)
-    /*
-       Ottima ottimizzazione degli accessi => ogni thread accede alla sua cella in maniera coalescente. 
+    // -----------------------------------
+    //   CARICAMENTO IN SHARED MEMORY
+    // -----------------------------------
+
+    // 1- Carico la cella centrale
+
+    // Controllo per indici oltre la griglia di gioco.
+    if (global_x < dev_width && global_y < dev_height) {
+        // Accesso alla memoria globale *src*
+        tile[shared_y][shared_x] = src[global_idx];
+    } else {
+        tile[shared_y][shared_x] = 0;
+    }
+     /*
+       Accessi in memoria => ogni thread accede alla sua cella in maniera coalescente. 
        Il thread 0 accede a x, il thread 1 accede a x+1 ecc...
        Essendo 32 thread x warp => ogni warp chiede 32 byte => un'unica transazione
        Il mem controller vede questa cosa e raccoglie tutte le richieste del warp in 
-       una sola transazione da 32
+       una sola transazione da 32.
+       [Warp divergence] non di impatto => In questo caso stesso numero di celle e thread.
     */
-    // Controllo bounds globali
-    if (global_x < d_width && global_y < d_height) {
-        tile[shared_y][shared_x] = src[global_y * d_width + global_x];
-    } else {
-        tile[shared_y][shared_x] = 0; // Padding esterno nullo
-    }
-    // Warp divergence ma non di troppo impatto. Abbiamo stesso
-    // numero di celle e thread => non ho thread di riempimento idle nei warp.
 
-    // B. Caricamento dei bordi (Halo/Ghost cells)
-    // I thread sui bordi del blocco caricano anche i vicini esterni al blocco.
-    
-    // Halo Superiore
-    // riga 0 -> o è l'ultima riga del blocco precedente
-    // o è riga con tutti 0 di zero-padding
+    // 2- Caricamento dei vicini
     /*
-        Ottimizzazione buonina => solo i thread che accedono alla riga 0 eseguono questa istruzione ad indirizzi contigui (coalesced):
-        con blocchi 16x16 => 16 thread (metà warp) => 16 byte.
-        In questo modo solo 16 dei 32 byte richiesti saranno utilizzati.
-        Ma comunque il dato sarà già presente per il blocco che detiene quella riga in L2 (più veloce della DRAM)
+        Le celle di gioco dei vicini vengono completamente caricate dagli altri thread del blocco
+        solo per le celle dalla riga 1 a riga dimBlock.y-1 e da colonna 1 a colonna dimBlock.x-1
+        dall'istruzione precedente (necessaria sincronizzazione tra thread).
+        Per le altre celle di bordo, devo accedere alla memoria globale.
     */
+
+    // 2.1- Riga 0 del blocco
+    // Devo caricare l'ultima riga del blocco superiore 
+    // oppure tutti 0 se è la riga 0 della griglia di gioco totale (zero-padding)
     if (local_y < RADIUS) { 
         int load_y = global_y - RADIUS; // riga precedente
-        if (load_y >= 0 && global_x < d_width) // Check bounds
-            tile[shared_y - RADIUS][shared_x] = src[load_y * d_width + global_x];
+        if (load_y >= 0 && global_x < dev_width)
+            tile[shared_y - RADIUS][shared_x] = src[load_y * dev_width + global_x];
         else
             tile[shared_y - RADIUS][shared_x] = 0;
     }
-
-    // Halo Inferiore
-    // ultima riga del blocco -> mi serve la prima del blocco dopo
-    // o è riga con tutti 0 di zero-padding
-    /*
-        Ottimizzazione buonina => solo i thread che accedono all'ultima riga del blocco eseguono questa istruzione ad indirizzi contigui (coalesced):
+     /*
+        Accessi in memoria => solo i thread che accedono alle celle appartenenti alla riga 0 del thread block 
+        eseguono questa istruzione ad indirizzi coalesced: thread 0 -> cella[0][0], thread 1 -> cella[0][1]...
         con blocchi 16x16 => 16 thread (metà warp) => 16 byte.
-        In questo modo solo 16 dei 32 byte richiesti saranno utilizzati.
-        Ma comunque il dato sarà già presente per il blocco che detiene quella riga in L2 (più veloce della DRAM)
+        In questo modo solo 16 dei 32 byte richiesti saranno utilizzati.ù
     */
+
+    // 2.2- Ultima riga del blocco
+    // Devo caricare la prima riga del blocco inferiore 
+    // oppure tutti 0 se è l'ultima riga della griglia di gioco totale (zero-padding)
     if (local_y >= blockDim.y - RADIUS) {
-        int load_y = global_y + RADIUS;
-        if (load_y < d_height && global_x < d_width)
-            tile[shared_y + RADIUS][shared_x] = src[load_y * d_width + global_x];
+        int load_y = global_y + RADIUS; // riga successiva
+        if (load_y < dev_height && global_x < dev_width)
+            tile[shared_y + RADIUS][shared_x] = src[load_y * dev_width + global_x];
         else
             tile[shared_y + RADIUS][shared_x] = 0;
     }
+    /*
+        Accessi in memoria => come prima
+    */
 
-    // Halo Sinistro
-    // prima colonna del blocco -> mi serve l'ultima del blocco prima
-    // o è colonna con tutti 0 di zero-padding
+    // 2.3- Colonna 0 del blocco
+    // Devo caricare l'ultima colonna del blocco a sinistra 
+    // oppure tutti 0 se è la colonna 0 della griglia di gioco totale (zero-padding)
     if (local_x < RADIUS) {
-        int load_x = global_x - RADIUS;
-        if (load_x >= 0 && global_y < d_height)
-            tile[shared_y][shared_x - RADIUS] = src[global_y * d_width + load_x];
+        int load_x = global_x - RADIUS; // colonna precedente
+        if (load_x >= 0 && global_y < dev_height)
+            tile[shared_y][shared_x - RADIUS] = src[global_y * dev_width + load_x];
         else
             tile[shared_y][shared_x - RADIUS] = 0;
     }
+    /*
+        Accessi in memoria -> Qui gli accessi sono peggiori e non coalescenti. Ogni warp contiene solo 2 thread 
+        che sono associati alla colonna 0 => per accessi row-major mi serve solo un byte del totale
+        caricati da una transazione.
+    */
 
-    // Halo Destro
-    // ultima colonna del blocco -> mi serve la prima del blocco dopo
-    // o è colonna con tutti 0 di zero-padding
+    // 2.4- Ultima colonna del blocco
+    // Devo caricare la prima colonna del blocco a destra 
+    // oppure tutti 0 se è l'ultima colonna della griglia di gioco totale (zero-padding)
     if (local_x >= blockDim.x - RADIUS) {
-        int load_x = global_x + RADIUS;
-        if (load_x < d_width && global_y < d_height)
-            tile[shared_y][shared_x + RADIUS] = src[global_y * d_width + load_x];
+        int load_x = global_x + RADIUS; // colonna successiva
+        if (load_x < dev_width && global_y < dev_height)
+            tile[shared_y][shared_x + RADIUS] = src[global_y * dev_width + load_x];
         else
             tile[shared_y][shared_x + RADIUS] = 0;
     }
+    /*
+        Accessi in memoria -> Come prima
+    */
 
-    // Halo Angoli per celle angolari del blocco
+    //2.5- Rimangono solo i vicini NW, NE, SE, SW
     if (local_x < RADIUS && local_y < RADIUS) { // Top-Left
         int load_y = global_y - RADIUS; int load_x = global_x - RADIUS;
-        tile[shared_y - RADIUS][shared_x - RADIUS] = (load_x >= 0 && load_y >= 0) ? src[load_y * d_width + load_x] : 0;
+        tile[shared_y - RADIUS][shared_x - RADIUS] = (load_x >= 0 && load_y >= 0) ? src[load_y * dev_width + load_x] : 0;
     }
     if (local_x >= blockDim.x - RADIUS && local_y < RADIUS) { // Top-Right
         int load_y = global_y - RADIUS; int load_x = global_x + RADIUS;
-        tile[shared_y - RADIUS][shared_x + RADIUS] = (load_x < d_width && load_y >= 0) ? src[load_y * d_width + load_x] : 0;
+        tile[shared_y - RADIUS][shared_x + RADIUS] = (load_x < dev_width && load_y >= 0) ? src[load_y * dev_width + load_x] : 0;
     }
     if (local_x < RADIUS && local_y >= blockDim.y - RADIUS) { // Bottom-Left
         int load_y = global_y + RADIUS; int load_x = global_x - RADIUS;
-        tile[shared_y + RADIUS][shared_x - RADIUS] = (load_x >= 0 && load_y < d_height) ? src[load_y * d_width + load_x] : 0;
+        tile[shared_y + RADIUS][shared_x - RADIUS] = (load_x >= 0 && load_y < dev_height) ? src[load_y * dev_width + load_x] : 0;
     }
     if (local_x >= blockDim.x - RADIUS && local_y >= blockDim.y - RADIUS) { // Bottom-Right
         int load_y = global_y + RADIUS; int load_x = global_x + RADIUS;
-        tile[shared_y + RADIUS][shared_x + RADIUS] = (load_x < d_width && load_y < d_height) ? src[load_y * d_width + load_x] : 0;
+        tile[shared_y + RADIUS][shared_x + RADIUS] = (load_x < dev_width && load_y < dev_height) ? src[load_y * dev_width + load_x] : 0;
     }
 
+    // [Warp Divergence] Purtroppo inevitabile per questo tipo di accesso alle celle di gioco 
+    // e uso della shared memory.
+    
     // BARRIERA DI SINCRONIZZAZIONE
     // Necessaria per assicurare che tutto il blocco abbia caricato i dati in Shared Mem
     __syncthreads();
 
-    // --- FASE 2: CALCOLO (Leggendo SOLO da Shared Memory) ---
+    // ---------------------------------------
+    //  CALCOLO DEL NUOVO STATO DELLA CELLA
+    //  Posso accedere ora solo alla smem
+    // ---------------------------------------
     
-    // Se siamo fuori dalla griglia reale, usciamo (dopo il sync, o i thread attivi aspetterebbero all'infinito quelli usciti prima)
-    if (global_x >= d_width || global_y >= d_height) return;
+    // Controllo per indici oltre la griglia di gioco.
+    if (global_x >= dev_width || global_y >= dev_height) {
+        return;
+    }
+    // FONDAMENTALE farlo qui se no la barriera __syncthreads non sarà mai
+    // raggiunta da tutti i thread se ci sono thread di riempimento del warp => deadlock
 
     int neighbors_alive = 0;
-    
-    // Loop ottimizzato (unrolling manuale spesso aiuta, ma il compilatore è bravo)
     for (int dy = -RADIUS; dy <= RADIUS; ++dy) {
         for (int dx = -RADIUS; dx <= RADIUS; ++dx) {
-            // Leggo direttamente dalla cache veloce (tile)
+            // Lettura da SMEM
             neighbors_alive += tile[shared_y + dy][shared_x + dx];
         }
     }
 
     u8 cell_value = tile[shared_y][shared_x];
-    neighbors_alive -= cell_value; // Rimuovo self
+    // Escludo la cella centrale dal conteggio
+    neighbors_alive -= cell_value;
 
-    // Aggiornamento della griglia finale
+    // Salvataggio del risultato in memoria globale *dst*
     dst[global_idx] = (neighbors_alive == 3) || (cell_value && (neighbors_alive == 2));
 }
 
@@ -190,39 +221,32 @@ void init_random_reproducible(u8* grid, int width, int height, unsigned int seed
 }
 
 int main(int argc, char** argv) {
-    int width = 1024;   // non più 32
-    int height = 1024;  // non più 32
+    int width = 1024;
+    int height = 1024;
     int steps = 15;
 
+    // Griglia di gioco
     size_t griglia = size_t(width) * height;
-    size_t total_bytes = griglia * sizeof(u8);
+    size_t bytes = griglia * sizeof(u8);
 
-    u8* h_board = (u8*)malloc(total_bytes);     // host board allocation
+    // Alloco memoria sull'host
+    u8* host_board = (u8*)malloc(bytes);
+    
+    // Inizializzazione random riproducibile
     srand((unsigned)time(NULL));
-    //random_board(h_board, width, height, 0.15f);
-    //initialize_glider(h_board, width);
-    init_random_reproducible(h_board, width, height, 42);
+    init_random_reproducible(host_board, width, height, 42);
 
-    // alloca memoria device
-    u8 *d_a, *d_b;
-    CHECK(cudaMalloc(&d_a, total_bytes));
-    CHECK(cudaMalloc(&d_b, total_bytes));
-    CHECK(cudaMemcpy(d_a, h_board, total_bytes, cudaMemcpyHostToDevice));
+    // Alloco memoria sul device
+    u8 *dev_a, *dev_b;
+    CHECK(cudaMalloc(&dev_a, bytes));
+    CHECK(cudaMalloc(&dev_b, bytes));
+    // Copio la griglia sul device
+    CHECK(cudaMemcpy(dev_a, host_board, bytes, cudaMemcpyHostToDevice));
 
     // Copia width e height in constant memory
-    CHECK(cudaMemcpyToSymbol(d_width, &width, sizeof(int)));
-    CHECK(cudaMemcpyToSymbol(d_height, &height, sizeof(int)));
-
-    // DIMENSIONE DEL BLOCCO: 2D
-    // Fare test per capire configurazione migliore e verificare 
-    // occupancy tramite nsight compute
-
-    // Dimensioni dei blocchi (Numero di thread) 
-    // uso le define in cima al file
-    /*
-    *   256 threads => 8 warp per blocco
-    */
-    
+    CHECK(cudaMemcpyToSymbol(dev_width, &width, sizeof(int)));
+    CHECK(cudaMemcpyToSymbol(dev_height, &height, sizeof(int)));
+ 
     // --- DIMENSIONAMENTO DI GRIGLIA E BLOCCHI ---
     dim3 dimBlock(BLOCK_DIM_X, BLOCK_DIM_Y);
     // Dimensione della griglia 2D calcolata in relazione a:
@@ -233,22 +257,26 @@ int main(int argc, char** argv) {
         (height + dimBlock.y - 1) / dimBlock.y
     );
 
-    u8* src = d_a;
-    u8* dst = d_b;
+    u8* src = dev_a;
+    u8* dst = dev_b;
 
-    // Kernel execution
+    // Lancio del kernel per il numero di generazioni
     for (int s = 0; s < steps; ++s) {
         gol_step_shared<<<dimGrid, dimBlock>>>(src, dst);
         CHECK(cudaGetLastError());
+        
+        // Sincronizzazione Host Device necessaria 
+        // prima di poter eseguire la prossima generazione
         CHECK(cudaDeviceSynchronize());
 
-        // Swap buffers
+        // Swap dei buffer
         u8* tmp = src;
         src = dst;
         dst = tmp;
     }
 
-    cudaFree(d_a);
-    cudaFree(d_b);
-    free(h_board);
+    // Liberazione memoria finale host e device
+    cudaFree(dev_a);
+    cudaFree(dev_b);
+    free(host_board);
 }
