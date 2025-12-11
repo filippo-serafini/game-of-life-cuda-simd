@@ -27,7 +27,7 @@ static inline uint64_t rdtsc(void) {
 }
 
 // Ottiene la frequenza della CPU in Hz
-// Su Windows, utilizza QueryPerformanceFrequency per ottenere una stima accurata
+// Su Windows, utilizziamo QueryPerformanceFrequency per ottenere una stima accurata
 static uint64_t get_cpu_frequency(void) {
     #if defined(_WIN32)
         // Su Windows, usiamo QueryPerformanceFrequency che è altamente accurato
