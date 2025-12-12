@@ -61,7 +61,7 @@ __global__ void gol_step_2d2d(u8* src, u8* dst, int width, int height, int RADIU
     u8 cell_value = src[cell_mem_idx];
     neighbors_alive -= cell_value; // Escludo la cella centrale dal conteggio
     u8 cell_result = 0;
-        
+           
     // RISOLTA warp divergence
     cell_result = (neighbors_alive == 3) || (cell_value && (neighbors_alive == 2));
 
