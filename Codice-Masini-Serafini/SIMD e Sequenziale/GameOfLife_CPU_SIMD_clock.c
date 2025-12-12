@@ -27,7 +27,6 @@ static inline uint64_t rdtsc(void) {
 }
 
 // Ottiene la frequenza della CPU in Hz
-// Su Windows, utilizziamo QueryPerformanceFrequency per ottenere una stima accurata
 static uint64_t get_cpu_frequency(void) {
     #if defined(_WIN32)
         // Su Windows, usiamo QueryPerformanceFrequency che è altamente accurato
@@ -111,6 +110,7 @@ void update_with_sse(char* current_grid, char* next_grid) {
 
     // Loop sulle righe logiche
     for (int i = 1; i <= LOGIC_SIZE; ++i) {
+        // Puntatori alle righe precedente, corrente e successiva
         char* row_prev = current_grid + (i - 1) * PADDED_SIZE;
         char* row_curr = current_grid + (i) * PADDED_SIZE;
         char* row_next = current_grid + (i + 1) * PADDED_SIZE;
