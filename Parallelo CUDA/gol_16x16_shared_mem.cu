@@ -197,7 +197,15 @@ int main(int argc, char** argv) {
     size_t griglia = size_t(width) * height;
     size_t total_bytes = griglia * sizeof(u8);
 
-    u8* h_board = (u8*)malloc(total_bytes);     // host board allocation
+    u8* h_board;
+    // VErsione precedente con allocazione in memoria paginabile e poi Pinned
+    /*
+        u8* h_board = (u8*)malloc(total_bytes);     // host board allocation
+    */
+
+    // Versione con istanziazione in PINNED MEMORY
+    CHECK(cudaMallocHost(&h_board, total_bytes));
+    
     srand((unsigned)time(NULL));
     //random_board(h_board, width, height, 0.15f);
     //initialize_glider(h_board, width);
